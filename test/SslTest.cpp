@@ -116,10 +116,6 @@ TEST(RsaKey, CorrectRsaKeyInitialization) {
     ASSERT_TRUE(!!key.get());
 }
 
-static int fileSize(const filesystem::path& p){
-    return filesystem::file_size(p);
-}
-
 TEST(RsaKey, CorrectKeySaveToFile) {
     MockOpenSsl ssl;
     MockBigNumber bn(ssl);
@@ -155,8 +151,8 @@ TEST(RsaKey, CorrectKeySaveToFile) {
 
     ASSERT_TRUE(key.saveToFiles("./priv.key", "./pub.key"));
     // check file sizes
-    ASSERT_EQ(fileSize("./priv.key"), 887);
-    ASSERT_EQ(fileSize("./pub.key"), 247);
+    ASSERT_EQ(filesystem::file_size("./priv.key"), 887);
+    ASSERT_EQ(filesystem::file_size("./pub.key"), 247);
 }
 TEST(DISABLED_RsaKey, DifferentKeyIsGeneratedEachTime) {
     cerr << "Hello world!\n";
