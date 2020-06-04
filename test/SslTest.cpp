@@ -85,8 +85,11 @@ TEST(RsaKey, CorrectBigNumberInitialization) {
 
     ASSERT_TRUE(bn.init());
 
-    OpenSsl ssl1;
-    RsaKey key(ssl1);
+    EXPECT_CALL(ssl, RSA_new()).Times(1);
+    EXPECT_CALL(ssl, RSA_free(_)).Times(1);
+    EXPECT_CALL(ssl, RSA_generate_key_ex(_, 1024, _, NULL)).Times(1);
+
+    RsaKey key(ssl);
     ASSERT_TRUE(key.initialize(bn));
     ASSERT_TRUE(!!key.get());
 }

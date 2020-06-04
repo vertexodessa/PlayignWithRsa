@@ -21,10 +21,10 @@ bool RsaKey::initialize(BigNumber& bne) {
     if (m_bits > 4096)
         return false;
 
-    if(!bne.get())
+    if (!bne.get())
         bne.init();
 
-    if(!bne.get())
+    if (!bne.get())
         return false;
 
     auto exponent = static_cast<int>(m_exponent);
@@ -33,8 +33,8 @@ bool RsaKey::initialize(BigNumber& bne) {
     if (!ret)
         return false;
 
-    m_rsa = unique_ptr<RSA, Deleter<RSA>>(RSA_new(),
-                                          [](RSA* r) { RSA_free(r); });
+    m_rsa = unique_ptr<RSA, Deleter<RSA>>(
+        m_ssl.RSA_new(), [this](RSA* r) { m_ssl.RSA_free(r); });
 
     if (!m_rsa)
         return false;
@@ -43,7 +43,7 @@ bool RsaKey::initialize(BigNumber& bne) {
 }
 
 bool RsaKey::generateKey(const BigNumber& bne) {
-    return RSA_generate_key_ex(m_rsa.get(), m_bits, bne.get(), NULL);
+    return m_ssl.RSA_generate_key_ex(m_rsa.get(), m_bits, bne.get(), NULL);
 }
 
 RSA* RsaKey::get() const { return m_rsa.get(); }
