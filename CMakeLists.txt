@@ -8,10 +8,7 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
 endif(CCACHE_FOUND)
 
-add_subdirectory(googletest)
-enable_testing()
-
-add_subdirectory(expected)
+#add_subdirectory(expected)
 
 add_subdirectory(app)
 add_subdirectory(lib)

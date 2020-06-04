@@ -22,11 +22,16 @@ pkg_search_module(OPENSSL openssl REQUIRED )
 
 target_compile_options(${TARGET} PUBLIC -fno-exceptions)
 target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES})
-include_directories(include ${OPENSSL_INCLUDE_DIRS})
+target_include_directories(${TARGET} PUBLIC include PRIVATE ${OPENSSL_INCLUDE_DIRS})
 
-install(TARGETS ${TARGET}
-        EXPORT ${TARGET}
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        INCLUDES DESTINATION include
-        )
+install(
+    DIRECTORY include
+    DESTINATION include
+    )
+
+install(
+    TARGETS ${TARGET}
+    EXPORT ${TARGET}
+    LIBRARY DESTINATION lib
+    #ARCHIVE DESTINATION lib
+    )
