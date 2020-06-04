@@ -37,18 +37,24 @@ class RsaKey {
     RsaKey(const RsaKey& other) = delete;
     virtual ~RsaKey() = default;
 
-    virtual int saveToFile(const filesystem::path& path);
-    virtual int readFromFile(const filesystem::path& path) {}
+    virtual bool saveToFiles(const filesystem::path& priv,
+                             const filesystem::path& pub);
+    virtual bool readFromFile(const filesystem::path& priv,
+                              const filesystem::path& pub) {}
 
     virtual bool initialize();
     virtual bool initialize(BigNumber& bne);
 
     RSA* get() const;
 
+    std::optional<std::pair<std::string, std::string>> asStrings();
+
   protected:
     virtual bool generateKey(const BigNumber& bne);
 
   private:
+    filesystem::path getAbsolutePath(const filesystem::path& relative);
+
     const uint16_t m_bits;
     const Exponent m_exponent;
     const OpenSsl& m_ssl;
