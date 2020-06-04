@@ -13,55 +13,48 @@ using namespace std;
 using namespace testing;
 using namespace MyOpenSslExample;
 
+#define FORWARD_TO_BASE(x)                                                     \
+    ON_CALL(*this, x).WillByDefault(                                           \
+        [this](auto... args) { return base_type::x(args...); });
+
 class MockOpenSsl : public OpenSsl {
   public:
+    using base_type = OpenSsl;
+
     MOCK_METHOD(RSA*, RSA_new, (), (const, override));
     MOCK_METHOD(void, RSA_free, (RSA*), (const, override));
+
+    MOCK_METHOD(int, RSA_generate_key_ex,
+                (RSA * rsa, int bits, BIGNUM* e, BN_GENCB* cb),
+                (const, override));
 
     MOCK_METHOD(BIGNUM*, BN_new, (), (const, override));
     MOCK_METHOD(void, BN_clear_free, (BIGNUM*), (const, override));
     MOCK_METHOD(int, BN_set_word, (BIGNUM * a, BN_ULONG w), (const, override));
 
     MockOpenSsl() {
-        ON_CALL(*this, RSA_new).WillByDefault([this]() {
-            return OpenSsl::RSA_new();
-        });
-        ON_CALL(*this, RSA_free).WillByDefault([this](auto* p) {
-            return OpenSsl::RSA_free(p);
-        });
+        FORWARD_TO_BASE(RSA_new);
+        FORWARD_TO_BASE(RSA_free);
+        FORWARD_TO_BASE(RSA_generate_key_ex);
 
-        ON_CALL(*this, BN_new).WillByDefault([this]() {
-            return OpenSsl::BN_new();
-        });
-        ON_CALL(*this, BN_clear_free).WillByDefault([this](auto* p) {
-            return OpenSsl::BN_clear_free(p);
-        });
-        ON_CALL(*this, BN_set_word).WillByDefault([this](auto* a, auto w) {
-            return OpenSsl::BN_set_word(a, w);
-        });
+        FORWARD_TO_BASE(BN_new);
+        FORWARD_TO_BASE(BN_clear_free);
+        FORWARD_TO_BASE(BN_set_word);
     }
 };
 
 class MockBigNumber : public BigNumber {
   public:
+    using base_type = BigNumber;
+
     MOCK_METHOD(bool, init, (), (override));
     MOCK_METHOD(BIGNUM*, get, (), (const, override));
     MOCK_METHOD(int, setWord, (BN_ULONG), (override));
-    MOCK_METHOD(BigNumberPtr, newNum, (), (const, override));
 
     MockBigNumber(const OpenSsl& ssl) : BigNumber(ssl) {
-        ON_CALL(*this, init).WillByDefault([this]() {
-            return BigNumber::init();
-        });
-        ON_CALL(*this, get).WillByDefault([this]() {
-            return BigNumber::get();
-        });
-        ON_CALL(*this, setWord).WillByDefault([this](auto w) {
-            return BigNumber::setWord(w);
-        });
-        ON_CALL(*this, newNum).WillByDefault([this]() {
-            return BigNumber::newNum();
-        });
+        FORWARD_TO_BASE(init);
+        FORWARD_TO_BASE(get);
+        FORWARD_TO_BASE(setWord);
     }
 };
 
@@ -72,7 +65,6 @@ TEST(BigNumber, InitSequence) {
     EXPECT_CALL(ssl, BN_clear_free(_)).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, newNum()).Times(1);
     EXPECT_CALL(bn, get()).Times(1);
 
     ASSERT_TRUE(bn.init());
@@ -88,7 +80,6 @@ TEST(RsaKey, CorrectBigNumberInitialization) {
     EXPECT_CALL(ssl, BN_set_word(_, RSA_3)).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, newNum()).Times(1);
     EXPECT_CALL(bn, get()).Times(3);
     EXPECT_CALL(bn, setWord(RSA_3)).Times(1);
 

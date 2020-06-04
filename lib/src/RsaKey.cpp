@@ -33,17 +33,13 @@ bool RsaKey::initialize(BigNumber& bne) {
     if (!ret)
         return false;
 
-    m_rsa = newKey();
+    m_rsa = unique_ptr<RSA, Deleter<RSA>>(RSA_new(),
+                                          [](RSA* r) { RSA_free(r); });
 
     if (!m_rsa)
         return false;
 
     return generateKey(bne);
-}
-
-std::unique_ptr<RSA, Deleter<RSA>> RsaKey::newKey() {
-    return unique_ptr<RSA, Deleter<RSA>>(RSA_new(),
-                                         [](RSA* r) { RSA_free(r); });
 }
 
 bool RsaKey::generateKey(const BigNumber& bne) {

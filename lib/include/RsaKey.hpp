@@ -15,6 +15,7 @@
 namespace MyOpenSslExample {
 
 using RsaKeyPtr = std::unique_ptr<RSA, Deleter<RSA>>;
+
 class BigNumber;
 
 class RsaKey {
@@ -38,7 +39,6 @@ class RsaKey {
     RSA* get() const;
 
   protected:
-    virtual RsaKeyPtr newKey();
     virtual bool generateKey(const BigNumber& bne);
 
   private:
