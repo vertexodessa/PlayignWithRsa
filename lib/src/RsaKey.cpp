@@ -1,10 +1,9 @@
 #include "RsaKey.hpp"
 
-#include <openssl/rsa.h>
-
 #include <BigNumber.hpp>
 
-#include <mylog.h>
+#include <openssl/rsa.h>
+#include <fstream>
 
 constexpr bool DEBUG = false;
 
@@ -25,16 +24,13 @@ bool RsaKey::saveToFiles(const filesystem::path& privPath,
     if constexpr (DEBUG)
         cout << keys->first << "\n" << keys->second << "\n";
 
-    auto privFullPath = getAbsolutePath(privPath);
-    ofstream privFile(privFullPath);
-    auto pubFullPath = getAbsolutePath(pubPath);
-    ofstream pubFile(pubFullPath);
+    ofstream privFile(getAbsolutePath(privPath));
+    ofstream pubFile(getAbsolutePath(pubPath));
 
     if (!pubFile.is_open() || !privFile.is_open())
         return false;
 
-    const auto& privStr = keys->first;
-    const auto& pubStr = keys->second;
+    const auto& [privStr, pubStr] = keys.value();
     pubFile.write(pubStr.c_str(), pubStr.size());
     pubFile.close();
 
