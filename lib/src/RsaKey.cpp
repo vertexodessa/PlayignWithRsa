@@ -4,8 +4,6 @@
 
 #include <BigNumber.hpp>
 
-#include <mylog.h>
-
 using namespace std;
 
 namespace MyOpenSslExample {
@@ -21,7 +19,6 @@ int RsaKey::saveToFile(const filesystem::__cxx11::path& path) {
         file = currPath / path;
 
     auto pathStr = file.u8string();
-    M(pathStr);
 
 
 
