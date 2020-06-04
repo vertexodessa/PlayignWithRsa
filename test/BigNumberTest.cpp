@@ -9,8 +9,6 @@
 #include <BigNumber.hpp>
 #include <RsaKey.hpp>
 
-#include <mylog.h>
-
 using namespace std;
 using namespace testing;
 using namespace MyOpenSslExample;
@@ -24,19 +22,15 @@ class MockBigNumber : public BigNumber {
 
     MockBigNumber() {
         ON_CALL(*this, init).WillByDefault([this]() {
-            M(__PRETTY_FUNCTION__);
             return BigNumber::init();
         });
         ON_CALL(*this, get).WillByDefault([this]() {
-            M(__PRETTY_FUNCTION__);
             return BigNumber::get();
         });
         ON_CALL(*this, setWord).WillByDefault([this](BN_ULONG w) {
-            M(__PRETTY_FUNCTION__);
             return BigNumber::setWord(w);
         });
         ON_CALL(*this, newNum).WillByDefault([this]() {
-            M(__PRETTY_FUNCTION__);
             return BigNumber::newNum();
         });
     }

@@ -13,8 +13,6 @@
 
 #include <iostream>
 
-#include <mylog.h>
-
 namespace MyOpenSslExample {
 
 using BigNumberPtr = std::unique_ptr<BIGNUM, Deleter<BIGNUM>>;
@@ -37,9 +35,7 @@ class BigNumber {
 };
 
 bool BigNumber::init() {
-    M( "!!!!!!!!!!!! m_num " << m_num.get());
     m_num = newNum();
-    M( "!!!!!!!!!!!! m_num " << m_num.get());
     return !!m_num;
 }
 
