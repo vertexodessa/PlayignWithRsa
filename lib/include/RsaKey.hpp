@@ -12,6 +12,10 @@
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
 
+#include <experimental/filesystem>
+
+using namespace std::experimental;
+
 namespace MyOpenSslExample {
 
 using RsaKeyPtr = std::unique_ptr<RSA, Deleter<RSA>>;
@@ -32,6 +36,9 @@ class RsaKey {
 
     RsaKey(const RsaKey& other) = delete;
     virtual ~RsaKey() = default;
+
+    virtual int saveToFile(const filesystem::path& path);
+    virtual int readFromFile(const filesystem::path& path) {}
 
     virtual bool initialize();
     virtual bool initialize(BigNumber& bne);

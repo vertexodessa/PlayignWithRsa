@@ -21,12 +21,12 @@ pkg_search_module(OPENSSL openssl REQUIRED )
 
 
 target_compile_options(${TARGET} PUBLIC -fno-exceptions)
-target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES})
+target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES} -lstdc++fs )
 target_include_directories(${TARGET} PUBLIC include PRIVATE ${OPENSSL_INCLUDE_DIRS})
 
 install(
     DIRECTORY include
-    DESTINATION include
+    DESTINATION ${PROJECT_BINARY_DIR}/include
     )
 
 install(

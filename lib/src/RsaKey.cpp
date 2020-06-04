@@ -4,12 +4,28 @@
 
 #include <BigNumber.hpp>
 
+#include <mylog.h>
+
 using namespace std;
 
 namespace MyOpenSslExample {
 
 RsaKey::RsaKey(const OpenSsl& ssl, std::uint16_t bits, Exponent exponent)
     : m_bits(bits), m_exponent(exponent), m_ssl(ssl), m_initialized(false) {}
+
+int RsaKey::saveToFile(const filesystem::__cxx11::path& path) {
+    const auto currPath = filesystem::current_path();
+
+    auto file = path;
+    if (path.is_relative())
+        file = currPath / path;
+
+    auto pathStr = file.u8string();
+    M(pathStr);
+
+
+
+}
 
 bool RsaKey::initialize() {
     BigNumber bne(m_ssl);

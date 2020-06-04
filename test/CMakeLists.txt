@@ -11,8 +11,6 @@ set(LINK_LIBS ${OPENSSL_LIBRARIES} openssl_mylib)
 
 # GTest/GMock
 set(BUILD_GMOCK ON)
-add_subdirectory(googletest)
-enable_testing()
 
 
 include_directories(SYSTEM

@@ -12,6 +12,9 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENSSL openssl)
 pkg_search_module(OPENSSL openssl REQUIRED )
 
+
+#find_package(openssl_mylib REQUIRED)
+
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(${TARGET} ${SOURCE_FILES})
 

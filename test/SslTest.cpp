@@ -62,7 +62,7 @@ TEST(BigNumber, InitSequence) {
     MockOpenSsl ssl;
     MockBigNumber bn(ssl);
     EXPECT_CALL(ssl, BN_new()).Times(1);
-    EXPECT_CALL(ssl, BN_clear_free(_)).Times(1);
+    EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
     EXPECT_CALL(bn, get()).Times(1);
@@ -76,8 +76,8 @@ TEST(RsaKey, CorrectBigNumberInitialization) {
     MockBigNumber bn(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
-    EXPECT_CALL(ssl, BN_clear_free(_)).Times(1);
-    EXPECT_CALL(ssl, BN_set_word(_, RSA_3)).Times(1);
+    EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
     EXPECT_CALL(bn, get()).Times(3);
@@ -87,7 +87,7 @@ TEST(RsaKey, CorrectBigNumberInitialization) {
 
     EXPECT_CALL(ssl, RSA_new()).Times(1);
     EXPECT_CALL(ssl, RSA_free(_)).Times(1);
-    EXPECT_CALL(ssl, RSA_generate_key_ex(_, 1024, _, NULL)).Times(1);
+    EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL)).Times(1);
 
     RsaKey key(ssl);
     ASSERT_TRUE(key.initialize(bn));
