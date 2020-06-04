@@ -5,10 +5,7 @@
 #include <memory>
 //#include <optional>
 
-// TODO: forward-declare everything and move to .cpp
-#include <openssl/rsa.h>
-//#include <openssl/ssl.h>
-
+#include <OpenSsl.hpp>
 #include <utils/Deleter.hpp>
 
 #include <iostream>
@@ -19,8 +16,9 @@ using BigNumberPtr = std::unique_ptr<BIGNUM, Deleter<BIGNUM>>;
 
 class BigNumber {
     friend class MockBigNumber;
+
   public:
-    inline BigNumber() = default;
+    explicit inline BigNumber(const OpenSsl& ssl);
     virtual ~BigNumber() = default;
 
     inline virtual bool init();
@@ -31,8 +29,11 @@ class BigNumber {
     inline virtual BigNumberPtr newNum() const;
 
   private:
+    const OpenSsl& m_ssl;
     BigNumberPtr m_num{nullptr};
 };
+
+BigNumber::BigNumber(const OpenSsl& ssl) : m_ssl(ssl) {}
 
 bool BigNumber::init() {
     m_num = newNum();
@@ -41,10 +42,13 @@ bool BigNumber::init() {
 
 BIGNUM* BigNumber::get() const { return m_num.get(); }
 
-int BigNumber::setWord(unsigned long w) { return BN_set_word(m_num.get(), w); }
+int BigNumber::setWord(unsigned long w) {
+    return m_ssl.BN_set_word(m_num.get(), w);
+}
 
 BigNumberPtr BigNumber::newNum() const {
-    return BigNumberPtr(BN_new(), [](BIGNUM* b) { BN_clear_free(b); });
+    return BigNumberPtr(m_ssl.BN_new(),
+                        [this](BIGNUM* b) { m_ssl.BN_clear_free(b); });
 }
 
 } // namespace MyOpenSslExample

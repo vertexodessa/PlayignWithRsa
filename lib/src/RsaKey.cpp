@@ -8,11 +8,11 @@ using namespace std;
 
 namespace MyOpenSslExample {
 
-RsaKey::RsaKey(std::uint16_t bits, Exponent exponent)
-    : m_bits(bits), m_exponent(exponent), m_initialized(false) {}
+RsaKey::RsaKey(const OpenSsl& ssl, std::uint16_t bits, Exponent exponent)
+    : m_bits(bits), m_exponent(exponent), m_ssl(ssl), m_initialized(false) {}
 
 bool RsaKey::initialize() {
-    BigNumber bne;
+    BigNumber bne(m_ssl);
     bne.init();
     return initialize(bne);
 }
@@ -50,11 +50,12 @@ bool RsaKey::generateKey(const BigNumber& bne) {
     return RSA_generate_key_ex(m_rsa.get(), m_bits, bne.get(), NULL);
 }
 
-auto* RsaKey::getKey() const { return m_rsa.get(); }
+RSA* RsaKey::get() const { return m_rsa.get(); }
 
 std::optional<RsaKey> make_rsa_key(uint16_t keyLength,
                                    RsaKey::Exponent exponent) {
-    RsaKey key{keyLength, exponent};
+    OpenSsl ssl;
+    RsaKey key{ssl, keyLength, exponent};
     if (key.initialize())
         return std::optional(std::move(key));
     return std::optional<RsaKey>();
