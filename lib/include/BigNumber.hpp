@@ -8,7 +8,7 @@
 #include <iostream>
 
 namespace MyOpenSslExample {
-class OpenSsl;
+class OpenSslWrapper;
 
 using BigNumberPtr = std::unique_ptr<BIGNUM, Deleter<BIGNUM>>;
 
@@ -16,7 +16,7 @@ class BigNumber {
     friend class MockBigNumber;
 
   public:
-    explicit BigNumber(const OpenSsl& ssl);
+    explicit BigNumber(const OpenSslWrapper& ssl);
     virtual ~BigNumber() = default;
 
     virtual bool init();
@@ -24,7 +24,7 @@ class BigNumber {
     virtual int setWord(BN_ULONG w);
 
   private:
-    const OpenSsl& m_ssl;
+    const OpenSslWrapper& m_ssl;
     BigNumberPtr m_num{nullptr};
 };
 

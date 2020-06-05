@@ -1,10 +1,10 @@
 #include <BigNumber.hpp>
 
-#include <OpenSsl.hpp>
+#include <OpenSslWrapper.hpp>
 
 namespace MyOpenSslExample {
 
-BigNumber::BigNumber(const OpenSsl& ssl) : m_ssl(ssl) {}
+BigNumber::BigNumber(const OpenSslWrapper& ssl) : m_ssl(ssl) {}
 
 bool BigNumber::init() {
     m_num = BigNumberPtr(m_ssl.BN_new(),

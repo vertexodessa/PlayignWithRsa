@@ -26,7 +26,7 @@ foreach(case_file ${test_cases})
     get_filename_component( case_name ${case_file} NAME_WE )
     set (case_name test_${case_name})
     add_executable(${case_name} ${case_file})
-    target_compile_options(${case_name} PUBLIC -fno-exceptions)
+    target_compile_options(${case_name} PUBLIC -fno-exceptions -fdiagnostics-color=always)
 
     target_link_libraries(
         ${case_name} PUBLIC

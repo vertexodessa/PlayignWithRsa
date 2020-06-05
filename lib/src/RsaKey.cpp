@@ -11,8 +11,8 @@ using namespace std;
 
 namespace MyOpenSslExample {
 
-RsaKey::RsaKey(const OpenSsl& ssl, std::uint16_t bits, Exponent exponent)
-    : m_bits(bits), m_exponent(exponent), m_ssl(ssl), m_initialized(false) {}
+RsaKey::RsaKey(const OpenSslWrapper& ssl, std::uint16_t bits, Exponent exponent)
+    : m_bits(bits), m_exponent(exponent), m_ssl(ssl) {}
 
 bool RsaKey::operator==(const RsaKey& other) const {
     const BIGNUM *n1, *e1, *d1;
@@ -86,31 +86,40 @@ Error RsaKey::initialize() const {
 }
 
 Error RsaKey::initialize(BigNumber& bne) const {
-    if (m_bits > 4096L)
-        return Error::InvalidState;
+    Error ret = Error::InvalidState;
 
-    if (!bne.get())
-        bne.init();
+    std::call_once(m_initOnce, [&ret, &bne, this]() {
+        if (m_bits > 4096L) {
+            ret = Error::InvalidState;
+            return;
+        }
 
-    if (!bne.get())
-        return Error::InvalidArguments;
+        if (!bne.get())
+            if (!bne.init()) {
+                ret = Error::InvalidArguments;
+                return;
+            }
 
-    auto exponent = static_cast<int>(m_exponent);
+        auto exponent = static_cast<int>(m_exponent);
 
-    auto ret = bne.setWord(exponent);
-    if (!ret)
-        return Error::InvalidArguments;
+        if (!bne.setWord(exponent)) {
+            ret = Error::InvalidArguments;
+            return;
+        }
 
-    // FIXME: !!! UGLY CONST CAST
-    const_cast<RsaKeyPtr&>(m_rsa) =
-        RsaKeyPtr(m_ssl.RSA_new(), [this](RSA* r) { m_ssl.RSA_free(r); });
+        m_rsa =
+            RsaKeyPtr(m_ssl.RSA_new(), [this](RSA* r) { m_ssl.RSA_free(r); });
 
-    if (!m_rsa)
-        return Error::MemoryAllocationError;
+        if (!m_rsa) {
+            ret = Error::MemoryAllocationError;
+            return;
+        }
 
-    return m_ssl.RSA_generate_key_ex(m_rsa.get(), m_bits, bne.get(), NULL)
-               ? Error::NoError
-               : Error::SSLBackendError;
+        ret = (m_ssl.RSA_generate_key_ex(m_rsa.get(), m_bits, bne.get(), NULL)
+                   ? Error::NoError
+                   : Error::SSLBackendError);
+    });
+    return ret;
 }
 
 filesystem::path RsaKey::getAbsolutePath(const filesystem::path& relative) {
@@ -174,9 +183,8 @@ Error RsaKey::fromPrivateKeyStr(const std::string& privKey) {
     auto rsa = unique_ptr<RSA, Deleter<RSA>>(
         m_ssl.EVP_PKEY_get1_RSA(pkey), [this](auto* r) { m_ssl.RSA_free(r); });
 
-    if (!rsa) {
+    if (!rsa)
         return Error::MemoryAllocationError;
-    }
 
     m_rsa.swap(rsa);
     return m_rsa ? Error::NoError : Error::InvalidState;

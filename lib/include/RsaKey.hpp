@@ -3,10 +3,11 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <variant>
 
-#include <OpenSsl.hpp>
+#include <OpenSslWrapper.hpp>
 #include <Result.hpp>
 #include <utils/Deleter.hpp>
 
@@ -28,19 +29,17 @@ class RsaKey {
   public:
     enum class Exponent { Rsa3 = RSA_3, RsaF4 = RSA_F4 };
 
-    RsaKey(const OpenSsl& ssl, uint16_t keyLength = 1024,
+    RsaKey(const OpenSslWrapper& ssl, uint16_t keyLength = 1024,
            Exponent exponent = Exponent::Rsa3);
 
     RsaKey(RsaKey&& other)
         : m_bits(other.m_bits), m_exponent(other.m_exponent),
-          m_ssl(std::move(other.m_ssl)), m_initialized(other.m_initialized),
-          m_rsa(move(other.m_rsa)) {}
-
-    bool operator==(const RsaKey& other) const;
+          m_ssl(std::move(other.m_ssl)), m_rsa(move(other.m_rsa)) {}
 
     RsaKey(const RsaKey& other) = delete;
-
     virtual ~RsaKey() = default;
+
+    bool operator==(const RsaKey& other) const;
 
     virtual Error saveToFiles(const filesystem::path& privPath,
                               const filesystem::path& pubPath);
@@ -62,9 +61,9 @@ class RsaKey {
     static filesystem::path getAbsolutePath(const filesystem::path& relative);
     const uint16_t m_bits;
     const Exponent m_exponent;
-    const OpenSsl& m_ssl;
-    bool m_initialized;
-    RsaKeyPtr m_rsa;
+    const OpenSslWrapper& m_ssl;
+    mutable std::once_flag m_initOnce;
+    mutable RsaKeyPtr m_rsa;
 };
 
 } // namespace MyOpenSslExample

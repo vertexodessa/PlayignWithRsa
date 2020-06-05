@@ -20,7 +20,7 @@ pkg_check_modules(OPENSSL openssl)
 pkg_search_module(OPENSSL openssl REQUIRED )
 
 
-target_compile_options(${TARGET} PUBLIC -fno-exceptions)
+target_compile_options(${TARGET} PUBLIC -fno-exceptions  -fdiagnostics-color=always)
 target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES} -lstdc++fs )
 target_include_directories(${TARGET} PUBLIC include PRIVATE ${OPENSSL_INCLUDE_DIRS})
 

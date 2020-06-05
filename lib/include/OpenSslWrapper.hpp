@@ -3,7 +3,7 @@
 #include <openssl/ssl.h>
 
 namespace MyOpenSslExample {
-class OpenSsl {
+class OpenSslWrapper {
   public:
     virtual RSA* RSA_new() const;
     virtual void RSA_free(RSA*) const;

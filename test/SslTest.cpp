@@ -20,9 +20,9 @@ constexpr char pubName[]{"./pub.key"};
     ON_CALL(*this, x).WillByDefault(                                           \
         [this](auto... args) { return base_type::x(args...); });
 
-class MockOpenSsl : public OpenSsl {
+class MockOpenSsl : public OpenSslWrapper {
   public:
-    using base_type = OpenSsl;
+    using base_type = OpenSslWrapper;
 
     MOCK_METHOD(RSA*, RSA_new, (), (const, override));
     MOCK_METHOD(void, RSA_free, (RSA*), (const, override));
@@ -84,7 +84,7 @@ class MockBigNumber : public BigNumber {
     MOCK_METHOD(BIGNUM*, get, (), (const, override));
     MOCK_METHOD(int, setWord, (BN_ULONG), (override));
 
-    explicit MockBigNumber(const OpenSsl& ssl) : BigNumber(ssl) {
+    explicit MockBigNumber(const OpenSslWrapper& ssl) : BigNumber(ssl) {
         FORWARD_TO_BASE(init);
         FORWARD_TO_BASE(get);
         FORWARD_TO_BASE(setWord);
@@ -113,7 +113,7 @@ TEST(RsaKey, CorrectRsaKeyInitialization) {
     EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, get()).Times(3);
+    EXPECT_CALL(bn, get()).Times(2);
     EXPECT_CALL(bn, setWord(RSA_3)).Times(1);
 
     ASSERT_TRUE(bn.init());
@@ -140,7 +140,7 @@ TEST(RsaKey, CorrectKeySaveToFile) {
     EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
 
     EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, get()).Times(3);
+    EXPECT_CALL(bn, get()).Times(2);
     EXPECT_CALL(bn, setWord(RSA_3)).Times(1);
 
     ASSERT_TRUE(bn.init());

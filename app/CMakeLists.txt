@@ -18,6 +18,6 @@ pkg_search_module(OPENSSL openssl REQUIRED )
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(${TARGET} ${SOURCE_FILES})
 
-target_compile_options(${TARGET} PUBLIC -fno-exceptions)
+target_compile_options(${TARGET} PUBLIC -fno-exceptions -fdiagnostics-color=always)
 target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES})
 include_directories(${OPENSSL_INCLUDE_DIRS})
