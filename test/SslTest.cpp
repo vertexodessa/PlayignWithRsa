@@ -13,6 +13,9 @@ using namespace std;
 using namespace testing;
 using namespace MyOpenSslExample;
 
+constexpr char privName[]{"./priv.key"};
+constexpr char pubName[]{"./pub.key"};
+
 #define FORWARD_TO_BASE(x)                                                     \
     ON_CALL(*this, x).WillByDefault(                                           \
         [this](auto... args) { return base_type::x(args...); });
@@ -37,6 +40,8 @@ class MockOpenSsl : public OpenSsl {
     MOCK_METHOD(void, BIO_vfree, (BIO * p), (const, override));
     MOCK_METHOD(int, BIO_read, (BIO * b, void* buf, int len),
                 (const, override));
+    MOCK_METHOD(int, BIO_write, (BIO * b, const void* buf, int len),
+                (const, override));
 
     MOCK_METHOD(int, PEM_write_bio_RSAPublicKey, (BIO * bp, RSA* x),
                 (const, override));
@@ -44,6 +49,10 @@ class MockOpenSsl : public OpenSsl {
                 (BIO * bp, RSA* x, const EVP_CIPHER* enc, unsigned char* kstr,
                  int klen, pem_password_cb* cb, void* u),
                 (const, override));
+    MOCK_METHOD(EVP_PKEY*, PEM_read_bio_PrivateKey,
+                (BIO * bp, EVP_PKEY** x, pem_password_cb* cb, void* u),
+                (const, override));
+    MOCK_METHOD(RSA*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey), (const, override));
 
     MockOpenSsl() {
         FORWARD_TO_BASE(RSA_new);
@@ -58,9 +67,12 @@ class MockOpenSsl : public OpenSsl {
         FORWARD_TO_BASE(BIO_new);
         FORWARD_TO_BASE(BIO_vfree);
         FORWARD_TO_BASE(BIO_read);
+        FORWARD_TO_BASE(BIO_write);
 
         FORWARD_TO_BASE(PEM_write_bio_RSAPublicKey);
         FORWARD_TO_BASE(PEM_write_bio_RSAPrivateKey);
+        FORWARD_TO_BASE(PEM_read_bio_PrivateKey);
+        FORWARD_TO_BASE(EVP_PKEY_get1_RSA);
     }
 };
 
@@ -72,7 +84,7 @@ class MockBigNumber : public BigNumber {
     MOCK_METHOD(BIGNUM*, get, (), (const, override));
     MOCK_METHOD(int, setWord, (BN_ULONG), (override));
 
-    MockBigNumber(const OpenSsl& ssl) : BigNumber(ssl) {
+    explicit MockBigNumber(const OpenSsl& ssl) : BigNumber(ssl) {
         FORWARD_TO_BASE(init);
         FORWARD_TO_BASE(get);
         FORWARD_TO_BASE(setWord);
@@ -112,8 +124,11 @@ TEST(RsaKey, CorrectRsaKeyInitialization) {
         .Times(1);
 
     RsaKey key(ssl);
-    ASSERT_TRUE(key.initialize(bn));
-    ASSERT_TRUE(!!key.get());
+    ASSERT_EQ(key.initialize(bn), Error::NoError);
+
+    auto res = key.getKey();
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(!!res.value());
 }
 
 TEST(RsaKey, CorrectKeySaveToFile) {
@@ -136,8 +151,12 @@ TEST(RsaKey, CorrectKeySaveToFile) {
         .Times(1);
 
     RsaKey key(ssl);
-    ASSERT_TRUE(key.initialize(bn));
-    ASSERT_TRUE(!!key.get());
+
+    ASSERT_EQ(key.initialize(bn), Error::NoError);
+
+    auto res = key.getKey();
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(!!res.value());
 
     EXPECT_CALL(ssl, BIO_s_mem()).Times(2);
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(2);
@@ -146,14 +165,60 @@ TEST(RsaKey, CorrectKeySaveToFile) {
     EXPECT_CALL(ssl, BIO_read(_, _, 247)).Times(1);
     EXPECT_CALL(ssl, BIO_read(_, _, 887)).Times(1);
 
-    EXPECT_CALL(ssl, PEM_write_bio_RSAPrivateKey(NotNull(), NotNull(), _, _, 0, _, _)).Times(1);
+    EXPECT_CALL(
+        ssl, PEM_write_bio_RSAPrivateKey(NotNull(), NotNull(), _, _, 0, _, _))
+        .Times(1);
     EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
 
-    ASSERT_TRUE(key.saveToFiles("./priv.key", "./pub.key"));
+    ASSERT_EQ(key.saveToFiles(privName, pubName), Error::NoError);
     // check file sizes
-    ASSERT_EQ(filesystem::file_size("./priv.key"), 887);
-    ASSERT_EQ(filesystem::file_size("./pub.key"), 247);
+    ASSERT_EQ(filesystem::file_size(privName), 887);
+    ASSERT_EQ(filesystem::file_size(pubName), 247);
 }
+
+TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
+    MockOpenSsl ssl;
+    RsaKey key(ssl);
+
+    EXPECT_CALL(ssl, BN_new()).Times(1);
+    EXPECT_CALL(ssl, BN_set_word(NotNull(), 3)).Times(1);
+    EXPECT_CALL(ssl, RSA_new()).Times(1);
+    EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
+        .Times(1);
+    EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
+
+    auto res = key.getKey();
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(!!res.value());
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(3);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(3);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(3);
+
+    EXPECT_CALL(
+        ssl, PEM_write_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0, 0, 0, 0))
+        .Times(1);
+    EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 247)).Times(1);
+
+    ASSERT_EQ(key.saveToFiles(privName, pubName), Error::NoError);
+
+    // check file sizes
+    ASSERT_EQ(filesystem::file_size(privName), 887);
+    ASSERT_EQ(filesystem::file_size(pubName), 247);
+
+    EXPECT_CALL(ssl, PEM_read_bio_PrivateKey(NotNull(), NotNull(), 0, 0))
+        .Times(1);
+    EXPECT_CALL(ssl, EVP_PKEY_get1_RSA(NotNull())).Times(1);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    RsaKey otherKey(ssl);
+
+    ASSERT_EQ(otherKey.readFromFile(privName), Error::NoError);
+    ASSERT_EQ(key, otherKey);
+}
+
 TEST(DISABLED_RsaKey, DifferentKeyIsGeneratedEachTime) {
     cerr << "Hello world!\n";
 }

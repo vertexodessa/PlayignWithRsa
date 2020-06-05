@@ -4,8 +4,10 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <variant>
 
 #include <OpenSsl.hpp>
+#include <Result.hpp>
 #include <utils/Deleter.hpp>
 
 // TODO: forward-declare everything and move to .cpp
@@ -34,37 +36,35 @@ class RsaKey {
           m_ssl(std::move(other.m_ssl)), m_initialized(other.m_initialized),
           m_rsa(move(other.m_rsa)) {}
 
+    bool operator==(const RsaKey& other) const;
+
     RsaKey(const RsaKey& other) = delete;
+
     virtual ~RsaKey() = default;
 
-    virtual bool saveToFiles(const filesystem::path& priv,
-                             const filesystem::path& pub);
-    virtual bool readFromFile(const filesystem::path& priv,
-                              const filesystem::path& pub) {}
+    virtual Error saveToFiles(const filesystem::path& privPath,
+                              const filesystem::path& pubPath);
+    virtual Error readFromFile(const filesystem::path& priv);
 
-    virtual bool initialize();
-    virtual bool initialize(BigNumber& bne);
+    Result<RSA*> getKey() const;
 
-    RSA* get() const;
+    Result<std::pair<std::string, std::string>> asStrings() const;
 
-    std::optional<std::pair<std::string, std::string>> asStrings();
+    virtual Error fromPrivateKeyStr(const std::string& privKey);
+
+    // BigNumber dependency injection
+    virtual Error initialize(BigNumber& bne) const;
 
   protected:
-    virtual bool generateKey(const BigNumber& bne);
-
   private:
-    filesystem::path getAbsolutePath(const filesystem::path& relative);
+    Error initialize() const;
 
+    static filesystem::path getAbsolutePath(const filesystem::path& relative);
     const uint16_t m_bits;
     const Exponent m_exponent;
     const OpenSsl& m_ssl;
     bool m_initialized;
     RsaKeyPtr m_rsa;
 };
-
-std::optional<RsaKey>
-make_rsa_key(uint16_t keyLength = 1024,
-             RsaKey::Exponent exponent = RsaKey::Exponent::Rsa3);
-;
 
 } // namespace MyOpenSslExample
