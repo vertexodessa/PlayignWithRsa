@@ -7,6 +7,7 @@
 #include <utils/Deleter.hpp>
 
 #include <BigNumber.hpp>
+#include <RsaEngine.hpp>
 #include <RsaKey.hpp>
 
 using namespace std;
@@ -16,11 +17,96 @@ using namespace MyOpenSslExample;
 constexpr char privName[]{"./priv.key"};
 constexpr char pubName[]{"./pub.key"};
 
+constexpr auto privKey = "-----BEGIN RSA PRIVATE KEY-----\n\
+MIICXAIBAAKBgQDXAW7AXMYXltS7VoF2QPomOPzr4S5gXVwQILwyEwo2BJkxBDHz\n\
+KYiYLUo9NLTPCSAP/5oGZk/vWz1+DxIoo0uHePEv7Zt7ffpeJD9F3rDHtrIbbMVh\n\
+Z70k5HSxDqEqNBYvvXGP0IK5yFtHcNxXnehyheu1QqkVL773Ma35w0wKTQIBAwKB\n\
+gQCPVknVky66ZI3SOaukK1Fu0KidQMmVk5K1ayghYgbOrbt2Asv3cQW6yNwozc3f\n\
+W2q1VRFZmYqfkij+tLbFwjJZFvTHgLje3baqlhIDyTrbkZ7R+PQ4yXVJB44OKKdR\n\
+pWG4JdHBTkfaVeH99ew0FezrZA2CXYRJspSIQhCQ4wc0KwJBAPypD45gy5iFTK8h\n\
+9otkZ0/+fasetVIDsslFx5rVfIth0vY3xd8aAcoCpii9heOdGw6LwQsVfUW0YGPo\n\
+k4JH0B0CQQDZ2PUeJWGY4xGUAkmldBcMRWLMOFbniYSP2dQ20LMwociOfyf7/PB9\n\
+haRXPIOZZ/ZhS7CrTSleK8pqrIzseWvxAkEAqHC1CZXdEFjdyhakXO2aNVRTx2nO\n\
+Nq0h24PaZzj9skE3Ts/ZP2ar3AHEGykD7RNnXwfWB2Oo2SLq7UW3rC/gEwJBAJE7\n\
+ThQY67tCC7gBhm5NZLLY7Iglj0UGWF/mjXngd3XBMF7/b/1TSv5ZGDooV7uapEDd\n\
+IHIzcOlyhvHIXfL7nUsCQDgpPEMZ4y7VkLR3wl8E081XvGtmA+ETsM0ipwPDLOhe\n\
+xm2HOptY8p6yh9V4jGk5MU3BpJp0Jw47rqVTWgBLDtc=\n\
+-----END RSA PRIVATE KEY-----\n";
+
+const string pubKey = "\
+-----BEGIN RSA PUBLIC KEY-----\n\
+MIGHAoGBANcBbsBcxheW1LtWgXZA+iY4/OvhLmBdXBAgvDITCjYEmTEEMfMpiJgt\n\
+Sj00tM8JIA//mgZmT+9bPX4PEiijS4d48S/tm3t9+l4kP0XesMe2shtsxWFnvSTk\n\
+dLEOoSo0Fi+9cY/QgrnIW0dw3Fed6HKF67VCqRUvvvcxrfnDTApNAgED\n\
+-----END RSA PUBLIC KEY-----\n";
+
+constexpr char smallText[]{"test"};
+
+constexpr char largeText[]{
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest"
+    "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttestte"
+    "sttest"};
+
 #define FORWARD_TO_BASE(x)                                                     \
     ON_CALL(*this, x).WillByDefault(                                           \
         [this](auto... args) { return base_type::x(args...); });
 
-class MockOpenSsl : public OpenSslWrapper {
+class MockOpenSslWrapper : public OpenSslWrapper {
   public:
     using base_type = OpenSslWrapper;
 
@@ -49,12 +135,12 @@ class MockOpenSsl : public OpenSslWrapper {
                 (BIO * bp, RSA* x, const EVP_CIPHER* enc, unsigned char* kstr,
                  int klen, pem_password_cb* cb, void* u),
                 (const, override));
-    MOCK_METHOD(EVP_PKEY*, PEM_read_bio_PrivateKey,
-                (BIO * bp, EVP_PKEY** x, pem_password_cb* cb, void* u),
+    MOCK_METHOD(RSA*, PEM_read_bio_RSAPrivateKey,
+                (BIO * bp, RSA** x, pem_password_cb* cb, void* u),
                 (const, override));
     MOCK_METHOD(RSA*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey), (const, override));
 
-    MockOpenSsl() {
+    MockOpenSslWrapper() {
         FORWARD_TO_BASE(RSA_new);
         FORWARD_TO_BASE(RSA_free);
         FORWARD_TO_BASE(RSA_generate_key_ex);
@@ -71,7 +157,7 @@ class MockOpenSsl : public OpenSslWrapper {
 
         FORWARD_TO_BASE(PEM_write_bio_RSAPublicKey);
         FORWARD_TO_BASE(PEM_write_bio_RSAPrivateKey);
-        FORWARD_TO_BASE(PEM_read_bio_PrivateKey);
+        FORWARD_TO_BASE(PEM_read_bio_RSAPrivateKey);
         FORWARD_TO_BASE(EVP_PKEY_get1_RSA);
     }
 };
@@ -92,7 +178,7 @@ class MockBigNumber : public BigNumber {
 };
 
 TEST(BigNumber, InitSequence) {
-    MockOpenSsl ssl;
+    MockOpenSslWrapper ssl;
     MockBigNumber bn(ssl);
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
@@ -105,7 +191,7 @@ TEST(BigNumber, InitSequence) {
 }
 
 TEST(RsaKey, CorrectRsaKeyInitialization) {
-    MockOpenSsl ssl;
+    MockOpenSslWrapper ssl;
     MockBigNumber bn(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
@@ -124,15 +210,26 @@ TEST(RsaKey, CorrectRsaKeyInitialization) {
         .Times(1);
 
     RsaKey key(ssl);
-    ASSERT_EQ(key.initialize(bn), Error::NoError);
+    ASSERT_EQ(key.initialize(bn), ErrorCode::NoError);
 
     auto res = key.getKey();
     ASSERT_TRUE(res);
     ASSERT_TRUE(!!res.value());
 }
 
+TEST(RsaKey, DifferentKeyIsGeneratedEachTime) {
+    MockOpenSslWrapper ssl;
+    RsaKey key1(ssl);
+    RsaKey key2(ssl);
+    auto keyPtr1 = key1.getKey();
+    ASSERT_TRUE(keyPtr1);
+    auto keyPtr2 = key2.getKey();
+    ASSERT_TRUE(keyPtr2);
+    ASSERT_NE(keyPtr1.value(), keyPtr2.value());
+}
+
 TEST(RsaKey, CorrectKeySaveToFile) {
-    MockOpenSsl ssl;
+    MockOpenSslWrapper ssl;
     MockBigNumber bn(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
@@ -152,7 +249,7 @@ TEST(RsaKey, CorrectKeySaveToFile) {
 
     RsaKey key(ssl);
 
-    ASSERT_EQ(key.initialize(bn), Error::NoError);
+    ASSERT_EQ(key.initialize(bn), ErrorCode::NoError);
 
     auto res = key.getKey();
     ASSERT_TRUE(res);
@@ -170,14 +267,14 @@ TEST(RsaKey, CorrectKeySaveToFile) {
         .Times(1);
     EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
 
-    ASSERT_EQ(key.saveToFiles(privName, pubName), Error::NoError);
+    ASSERT_EQ(key.saveToFiles(privName, pubName), ErrorCode::NoError);
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
     ASSERT_EQ(filesystem::file_size(pubName), 247);
 }
 
 TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
-    MockOpenSsl ssl;
+    MockOpenSslWrapper ssl;
     RsaKey key(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
@@ -202,23 +299,63 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 247)).Times(1);
 
-    ASSERT_EQ(key.saveToFiles(privName, pubName), Error::NoError);
+    ASSERT_EQ(key.saveToFiles(privName, pubName), ErrorCode::NoError);
 
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
     ASSERT_EQ(filesystem::file_size(pubName), 247);
 
-    EXPECT_CALL(ssl, PEM_read_bio_PrivateKey(NotNull(), NotNull(), 0, 0))
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
         .Times(1);
-    EXPECT_CALL(ssl, EVP_PKEY_get1_RSA(NotNull())).Times(1);
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     RsaKey otherKey(ssl);
 
-    ASSERT_EQ(otherKey.readFromFile(privName), Error::NoError);
+    ASSERT_EQ(otherKey.readFromFile(privName), ErrorCode::NoError);
     ASSERT_EQ(key, otherKey);
 }
 
-TEST(DISABLED_RsaKey, DifferentKeyIsGeneratedEachTime) {
-    cerr << "Hello world!\n";
+TEST(RsaEngine, Encrypt) {
+    MockOpenSslWrapper ssl;
+    RsaEngine engine(ssl);
+
+    vector<unsigned char> in(begin(smallText), end(smallText));
+
+    RsaKey key(ssl);
+    ASSERT_EQ(ErrorCode::NoError, key.fromPublicKey(pubKey));
+
+    RsaKey key2(ssl);
+    ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
+
+    auto val = engine.encrypt(key, in);
+    ASSERT_EQ(val.error(), ErrorCode::NoError);
+    ASSERT_NE(key, key2);
+
+    auto decrypted = engine.decrypt(key2, val.value());
+    ASSERT_EQ(decrypted.error(), ErrorCode::NoError);
+    ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
+              string(begin(smallText), end(smallText)));
 }
+
+TEST(RsaEngine, EncryptLargeFile) {
+    MockOpenSslWrapper ssl;
+    RsaEngine engine(ssl);
+
+    vector<unsigned char> in(begin(largeText), end(largeText));
+
+    RsaKey key(ssl);
+    ASSERT_EQ(ErrorCode::NoError, key.fromPublicKey(pubKey));
+
+    RsaKey key2(ssl);
+    ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
+
+    auto val = engine.encrypt(key, in);
+    ASSERT_EQ(val.error(), ErrorCode::NoError);
+    ASSERT_NE(key, key2);
+
+    auto decrypted = engine.decrypt(key2, val.value());
+    ASSERT_EQ(decrypted.error(), ErrorCode::NoError);
+    ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
+              string(begin(largeText), end(largeText)));
+}
+

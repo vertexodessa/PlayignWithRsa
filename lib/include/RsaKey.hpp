@@ -32,37 +32,42 @@ class RsaKey {
     RsaKey(const OpenSslWrapper& ssl, uint16_t keyLength = 1024,
            Exponent exponent = Exponent::Rsa3);
 
-    RsaKey(RsaKey&& other)
-        : m_bits(other.m_bits), m_exponent(other.m_exponent),
-          m_ssl(std::move(other.m_ssl)), m_rsa(move(other.m_rsa)) {}
+    RsaKey(RsaKey&& other);
 
     RsaKey(const RsaKey& other) = delete;
     virtual ~RsaKey() = default;
 
-    bool operator==(const RsaKey& other) const;
+    uint16_t keySize() const;
 
-    virtual Error saveToFiles(const filesystem::path& privPath,
+    bool operator==(const RsaKey& other) const;
+    bool operator!=(const RsaKey& other) const { return !(*this == other); };
+
+    virtual ErrorCode saveToFiles(const filesystem::path& privPath,
                               const filesystem::path& pubPath);
-    virtual Error readFromFile(const filesystem::path& priv);
+    virtual ErrorCode readFromFile(const filesystem::path& priv);
 
     Result<RSA*> getKey() const;
 
     Result<std::pair<std::string, std::string>> asStrings() const;
 
-    virtual Error fromPrivateKeyStr(const std::string& privKey);
+    virtual ErrorCode fromPrivateKey(const std::string& privKey);
+    virtual ErrorCode fromPublicKey(const std::string& privKey);
 
     // BigNumber dependency injection
-    virtual Error initialize(BigNumber& bne) const;
+    virtual ErrorCode initialize(BigNumber& bne) const;
 
   protected:
   private:
-    Error initialize() const;
-
+    ErrorCode initialize() const;
     static filesystem::path getAbsolutePath(const filesystem::path& relative);
+
     const uint16_t m_bits;
     const Exponent m_exponent;
     const OpenSslWrapper& m_ssl;
+
+    // FIXME: this cannot be used with move ctor
     mutable std::once_flag m_initOnce;
+
     mutable RsaKeyPtr m_rsa;
 };
 

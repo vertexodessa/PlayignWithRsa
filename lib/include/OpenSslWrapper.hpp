@@ -26,14 +26,21 @@ class OpenSslWrapper {
                                             const EVP_CIPHER* enc,
                                             unsigned char* kstr, int klen,
                                             pem_password_cb* cb, void* u) const;
-    virtual EVP_PKEY* PEM_read_bio_PrivateKey(BIO* bp, EVP_PKEY** x,
-                                              pem_password_cb* cb,
-                                              void* u) const;
+    virtual RSA* PEM_read_bio_RSAPrivateKey(BIO* bp, RSA** x,
+                                            pem_password_cb* cb, void* u) const;
     virtual RSA* EVP_PKEY_get1_RSA(EVP_PKEY* pkey) const;
 
     // untested:
     virtual void RSA_get0_key(const RSA* r, const BIGNUM** n, const BIGNUM** e,
                               const BIGNUM** d) const;
     virtual int BN_cmp(const BIGNUM* a, const BIGNUM* b) const;
+    virtual int RSA_public_encrypt(int flen, const unsigned char* from,
+                                   unsigned char* to, RSA* rsa,
+                                   int padding) const;
+    //    virtual RSA* PEM_read_bio_RSA_PUBKEY(BIO* bp, RSA** x,
+    //    pem_password_cb* cb,
+    //                                         void* u) const;
+    virtual RSA* PEM_read_bio_RSAPublicKey(BIO* bp, RSA** x,
+                                           pem_password_cb* cb, void* u) const;
 };
 } // namespace MyOpenSslExample
