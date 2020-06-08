@@ -320,11 +320,11 @@ TEST(RsaEngine, Encrypt) {
     ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
 
     auto val = engine.publicEncrypt(key, in);
-    ASSERT_EQ(val.errorCode(), ErrorCode::NoError);
+    ASSERT_TRUE(val);
     ASSERT_NE(key, key2);
 
     auto decrypted = engine.privateDecrypt(key2, val.value());
-    ASSERT_EQ(decrypted.errorCode(), ErrorCode::NoError);
+    ASSERT_TRUE(decrypted);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
               string(begin(smallText), end(smallText)));
 
@@ -343,12 +343,13 @@ TEST(RsaEngine, EncryptLargeFile) {
     RsaKey key2(ssl);
     ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
 
-    auto val = engine.publicEncrypt(key, in);
-    ASSERT_EQ(val.errorCode(), ErrorCode::NoError);
     ASSERT_NE(key, key2);
 
+    auto val = engine.publicEncrypt(key, in);
+    ASSERT_TRUE(val);
+
     auto decrypted = engine.privateDecrypt(key2, val.value());
-    ASSERT_EQ(decrypted.errorCode(), ErrorCode::NoError);
+    ASSERT_TRUE(decrypted);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
               string(begin(largeText), end(largeText)));
 }

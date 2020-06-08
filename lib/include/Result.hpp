@@ -26,7 +26,6 @@ struct ErrDesc {
 class StackedError {
   public:
     StackedError(ErrDesc desc) { m_stack.emplace_back(std::move(desc)); }
-
     StackedError(StackedError&& stack, const ErrDesc& desc) {
         m_stack.reserve(stack.m_stack.size() + 1);
 
