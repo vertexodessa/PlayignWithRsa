@@ -55,15 +55,17 @@ const auto processData = [](const RsaKey& key,
     }
 
     return Result(ret);
+#endif
 };
 
 Result<vector<unsigned char>>
-RsaEngine::encrypt(const RsaKey& key, const vector<unsigned char>& data) {
+RsaEngine::publicEncrypt(const RsaKey& key, const vector<unsigned char>& data) {
     return processData(key, data, &RSA_public_encrypt, true);
 }
 
 Result<vector<unsigned char>>
-RsaEngine::decrypt(const RsaKey& key, const vector<unsigned char>& data) {
+RsaEngine::privateDecrypt(const RsaKey& key,
+                          const vector<unsigned char>& data) {
     return processData(key, data, &RSA_private_decrypt, false);
 }
 
