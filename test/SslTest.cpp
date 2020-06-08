@@ -162,29 +162,11 @@ class MockOpenSslWrapper : public OpenSslWrapper {
     }
 };
 
-class MockBigNumber : public BigNumber {
-  public:
-    using base_type = BigNumber;
-
-    MOCK_METHOD(bool, init, (), (override));
-    MOCK_METHOD(BIGNUM*, get, (), (const, override));
-    MOCK_METHOD(int, setWord, (BN_ULONG), (override));
-
-    explicit MockBigNumber(const OpenSslWrapper& ssl) : BigNumber(ssl) {
-        FORWARD_TO_BASE(init);
-        FORWARD_TO_BASE(get);
-        FORWARD_TO_BASE(setWord);
-    }
-};
-
 TEST(BigNumber, InitSequence) {
     MockOpenSslWrapper ssl;
-    MockBigNumber bn(ssl);
+    BigNumber bn(ssl);
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
-
-    EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, get()).Times(1);
 
     ASSERT_TRUE(bn.init());
     ASSERT_TRUE(!!bn.get());
@@ -192,25 +174,16 @@ TEST(BigNumber, InitSequence) {
 
 TEST(RsaKey, CorrectRsaKeyInitialization) {
     MockOpenSslWrapper ssl;
-    MockBigNumber bn(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
     EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
-
-    EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, get()).Times(2);
-    EXPECT_CALL(bn, setWord(RSA_3)).Times(1);
-
-    ASSERT_TRUE(bn.init());
-
     EXPECT_CALL(ssl, RSA_new()).Times(1);
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(1);
     EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
         .Times(1);
 
     RsaKey key(ssl);
-    ASSERT_EQ(key.initialize(bn), ErrorCode::NoError);
 
     auto res = key.getKey();
     ASSERT_TRUE(res);
@@ -221,8 +194,25 @@ TEST(RsaKey, DifferentKeyIsGeneratedEachTime) {
     MockOpenSslWrapper ssl;
     RsaKey key1(ssl);
     RsaKey key2(ssl);
+
+    EXPECT_CALL(ssl, RSA_new()).Times(2);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
+
+    EXPECT_CALL(ssl, BN_new()).Times(1);
+    EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
+    EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
+        .Times(1);
     auto keyPtr1 = key1.getKey();
     ASSERT_TRUE(keyPtr1);
+
+
+    EXPECT_CALL(ssl, BN_new()).Times(1);
+    EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
+    EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
+        .Times(1);
+
     auto keyPtr2 = key2.getKey();
     ASSERT_TRUE(keyPtr2);
     ASSERT_NE(keyPtr1.value(), keyPtr2.value());
@@ -230,26 +220,16 @@ TEST(RsaKey, DifferentKeyIsGeneratedEachTime) {
 
 TEST(RsaKey, CorrectKeySaveToFile) {
     MockOpenSslWrapper ssl;
-    MockBigNumber bn(ssl);
+    RsaKey key(ssl);
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
     EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
 
-    EXPECT_CALL(bn, init()).Times(1);
-    EXPECT_CALL(bn, get()).Times(2);
-    EXPECT_CALL(bn, setWord(RSA_3)).Times(1);
-
-    ASSERT_TRUE(bn.init());
-
     EXPECT_CALL(ssl, RSA_new()).Times(1);
     EXPECT_CALL(ssl, RSA_free(_)).Times(1);
     EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
         .Times(1);
-
-    RsaKey key(ssl);
-
-    ASSERT_EQ(key.initialize(bn), ErrorCode::NoError);
 
     auto res = key.getKey();
     ASSERT_TRUE(res);
@@ -267,7 +247,7 @@ TEST(RsaKey, CorrectKeySaveToFile) {
         .Times(1);
     EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
 
-    ASSERT_EQ(key.saveToFiles(privName, pubName), ErrorCode::NoError);
+    ASSERT_FALSE(key.saveToFiles(privName, pubName));
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
     ASSERT_EQ(filesystem::file_size(pubName), 247);
@@ -299,7 +279,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 247)).Times(1);
 
-    ASSERT_EQ(key.saveToFiles(privName, pubName), ErrorCode::NoError);
+    ASSERT_FALSE(key.saveToFiles(privName, pubName));
 
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
@@ -322,19 +302,33 @@ TEST(RsaEngine, Encrypt) {
     vector<unsigned char> in(begin(smallText), end(smallText));
 
     RsaKey key(ssl);
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+
     ASSERT_EQ(ErrorCode::NoError, key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
+        .Times(1);
+
     ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
 
     auto val = engine.publicEncrypt(key, in);
-    ASSERT_EQ(val.error(), ErrorCode::NoError);
+    ASSERT_EQ(val.errorCode(), ErrorCode::NoError);
     ASSERT_NE(key, key2);
 
     auto decrypted = engine.privateDecrypt(key2, val.value());
-    ASSERT_EQ(decrypted.error(), ErrorCode::NoError);
+    ASSERT_EQ(decrypted.errorCode(), ErrorCode::NoError);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
               string(begin(smallText), end(smallText)));
+
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 }
 
 TEST(RsaEngine, EncryptLargeFile) {
@@ -350,11 +344,11 @@ TEST(RsaEngine, EncryptLargeFile) {
     ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
 
     auto val = engine.publicEncrypt(key, in);
-    ASSERT_EQ(val.error(), ErrorCode::NoError);
+    ASSERT_EQ(val.errorCode(), ErrorCode::NoError);
     ASSERT_NE(key, key2);
 
     auto decrypted = engine.privateDecrypt(key2, val.value());
-    ASSERT_EQ(decrypted.error(), ErrorCode::NoError);
+    ASSERT_EQ(decrypted.errorCode(), ErrorCode::NoError);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
               string(begin(largeText), end(largeText)));
 }

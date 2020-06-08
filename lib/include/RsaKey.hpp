@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <optional>
 #include <variant>
 
@@ -42,7 +43,7 @@ class RsaKey {
     bool operator==(const RsaKey& other) const;
     bool operator!=(const RsaKey& other) const { return !(*this == other); };
 
-    virtual ErrorCode saveToFiles(const filesystem::path& privPath,
+    virtual std::optional<StackedError> saveToFiles(const filesystem::path& privPath,
                               const filesystem::path& pubPath);
     virtual ErrorCode readFromFile(const filesystem::path& priv);
 
@@ -53,12 +54,9 @@ class RsaKey {
     virtual ErrorCode fromPrivateKey(const std::string& privKey);
     virtual ErrorCode fromPublicKey(const std::string& privKey);
 
-    // BigNumber dependency injection
-    virtual ErrorCode initialize(BigNumber& bne) const;
-
   protected:
   private:
-    ErrorCode initialize() const;
+    std::optional<StackedError> initialize() const;
     static filesystem::path getAbsolutePath(const filesystem::path& relative);
 
     const uint16_t m_bits;
@@ -66,7 +64,7 @@ class RsaKey {
     const OpenSslWrapper& m_ssl;
 
     // FIXME: this cannot be used with move ctor
-    mutable std::once_flag m_initOnce;
+    mutable std::shared_mutex m_rsaMutex;
 
     mutable RsaKeyPtr m_rsa;
 };

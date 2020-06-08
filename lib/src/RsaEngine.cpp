@@ -21,11 +21,11 @@ const auto processData = [](const RsaKey& key,
                             const vector<unsigned char>& data, auto* func,
                             bool encrypt) -> Result<vector<unsigned char>> {
     if (data.empty())
-        return ErrorCode::InvalidArguments;
+        return MAKE_ERROR(ErrorCode::InvalidArguments, "data should not be empty");
 
     auto keyPtr = key.getKey();
     if (!keyPtr)
-        return keyPtr.error();
+        return MAKE_ERROR(keyPtr.errorCode(), "unable to get key");
 
     const int padding = RSA_PKCS1_PADDING;
     auto rsaSize = RSA_size(keyPtr.value());
@@ -55,7 +55,7 @@ const auto processData = [](const RsaKey& key,
         if (returned_length == -1) {
             char buf[1024];
             ERR_error_string_n(ERR_get_error(), buf, 1024);
-            return ErrorCode::EncryptionError;
+            return MAKE_ERROR(ErrorCode::EncryptionError, buf);
         }
 
         ret.insert(end(ret), buffer.data(), buffer.data() + returned_length);
@@ -98,7 +98,7 @@ const auto processData = [](const RsaKey& key,
 
     for (auto& c : dest) {
         if (c.empty())
-            return ErrorCode::EncryptionError;
+            return MAKE_ERROR(ErrorCode::EncryptionError, "unable to encrypt data");
         ret.insert(end(ret), begin(c), end(c));
     }
 

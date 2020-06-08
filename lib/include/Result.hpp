@@ -5,9 +5,6 @@
 
 namespace MyOpenSslExample {
 
-// TODO: Error should save file and line where it happened
-// TODO: it should be stacked
-
 enum class ErrorCode {
     NoError = 0,
     FileAccessError,
@@ -26,10 +23,11 @@ struct ErrDesc {
     int line{-1};
 };
 
-class Error {
+class StackedError {
   public:
-    Error(const ErrDesc& desc) { m_stack.emplace_back(desc); }
-    Error(Error&& stack, const ErrDesc& desc) {
+    StackedError(ErrDesc desc) { m_stack.emplace_back(std::move(desc)); }
+
+    StackedError(StackedError&& stack, const ErrDesc& desc) {
         m_stack.reserve(stack.m_stack.size() + 1);
 
         for (auto e = std::rbegin(stack.m_stack); e != std::rend(stack.m_stack);
@@ -40,7 +38,7 @@ class Error {
         m_stack.push_back(desc);
     }
 
-    std::string asText() {
+    std::string asText() const {
         std::stringstream ss;
         for (auto i = std::rbegin(m_stack); i != std::rend(m_stack); ++i) {
             ss << i->file << ":" << i->line << ": " << i->description << "\n";
@@ -48,9 +46,16 @@ class Error {
         return ss.str();
     }
 
+    ErrorCode lastErrorCode() const { return m_stack.front().err; }
+
   private:
     std::vector<ErrDesc> m_stack;
 };
+
+#define MAKE_ERROR(code, desc)                                                 \
+    StackedError(ErrDesc{code, desc, __FILE__, __LINE__})
+#define ADD_ERROR(error, code, desc)                                           \
+    StackedError(std::move(error), ErrDesc{code, desc, __FILE__, __LINE__})
 
 template <typename T> class Result {
     // safe-bool idiom - avoid integer conversions
@@ -63,10 +68,11 @@ template <typename T> class Result {
     explicit Result(T value);
 
     // cppcheck-suppress  noExplicitConstructor
-    Result(ErrorCode error);
+    Result(StackedError errorCode);
 
     inline T& value();
-    inline const ErrorCode& error() const;
+    inline ErrorCode errorCode() const;
+    inline StackedError error() const;
 
     inline operator bool_type() const;
     inline T& operator->() const;
@@ -75,7 +81,7 @@ template <typename T> class Result {
   private:
     inline bool hasError() const;
 
-    std::variant<T, ErrorCode> m_result;
+    std::variant<T, StackedError> m_result;
 };
 
 template <typename T, typename Other>
@@ -92,15 +98,22 @@ bool operator==(const Result<T> lhs, const Other& rhs) {
 
 template <typename T> Result<T>::Result(T value) : m_result(value) {}
 
-template <typename T> Result<T>::Result(ErrorCode error) : m_result(error) {}
+template <typename T> Result<T>::Result(StackedError error) : m_result(error) {}
 
 template <typename T> T& Result<T>::value() { return std::get<T>(m_result); }
 
-template <typename T> const ErrorCode& Result<T>::error() const {
-    static const auto ret{ErrorCode::NoError};
-    return std::holds_alternative<ErrorCode>(m_result)
-               ? std::get<ErrorCode>(m_result)
-               : ret;
+template <typename T> ErrorCode Result<T>::errorCode() const {
+    auto ret{ErrorCode::NoError};
+    if (std::holds_alternative<StackedError>(m_result))
+        ret = std::get<StackedError>(m_result).lastErrorCode();
+    return ret;
+}
+
+template <typename T> StackedError Result<T>::error() const {
+    auto ret{MAKE_ERROR(ErrorCode::NoError, "no error")};
+    if (std::holds_alternative<StackedError>(m_result))
+        ret = std::get<StackedError>(m_result);
+    return ret;
 }
 
 template <typename T> T& Result<T>::operator->() const { return value(); }
@@ -108,8 +121,7 @@ template <typename T> T& Result<T>::operator->() const { return value(); }
 template <typename T> T& Result<T>::operator*() const { return value(); }
 
 template <typename T> bool Result<T>::hasError() const {
-    return std::holds_alternative<ErrorCode>(m_result) &&
-           error() != ErrorCode::NoError;
+    return std::holds_alternative<StackedError>(m_result);
 }
 
 template <typename T> Result<T>::operator bool_type() const {
