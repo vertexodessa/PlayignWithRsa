@@ -212,14 +212,10 @@ std::optional<StackedError> RsaKey::fromPrivateKey(const std::string& privKey) {
         return MAKE_ERROR(ErrorCode::MemoryAllocationError,
                           getLastSslError(m_ssl));
 
-    RSA* rsa = m_ssl.RSA_new();
+    auto rsaPtr = Ptr<RSA>(m_ssl.PEM_read_bio_RSAPrivateKey(bo.get(), 0, 0, 0),
+                           [this](auto* r) { m_ssl.RSA_free(r); });
 
-    if (!rsa)
-        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
-                          "unable to allocate memory for RSA");
-
-    if (!m_ssl.PEM_read_bio_RSAPrivateKey(bo.get(), &rsa, 0, 0)) {
-        m_ssl.RSA_free(rsa);
+    if (!rsaPtr) {
         return MAKE_ERROR(ErrorCode::InvalidArguments,
                           getLastSslError(m_ssl) +
                               " - unable to parse rsa key");
@@ -227,10 +223,10 @@ std::optional<StackedError> RsaKey::fromPrivateKey(const std::string& privKey) {
 
     {
         unique_lock lock(m_rsaMutex);
-        m_rsa = Ptr<RSA>(rsa, [this](auto* r) { m_ssl.RSA_free(r); });
+        m_rsa = move(rsaPtr);
     }
-    shared_lock lock(m_rsaMutex);
 
+    shared_lock lock(m_rsaMutex);
     if (!m_rsa)
         return MAKE_ERROR(ErrorCode::MemoryAllocationError,
                           getLastSslError(m_ssl) +
@@ -248,14 +244,10 @@ std::optional<StackedError> RsaKey::fromPublicKey(const string& pubKey) {
         return MAKE_ERROR(ErrorCode::MemoryAllocationError,
                           getLastSslError(m_ssl));
 
-    RSA* rsa = m_ssl.RSA_new();
+    auto rsaPtr = Ptr<RSA>(m_ssl.PEM_read_bio_RSAPublicKey(bo.get(), 0, 0, 0),
+                           [this](auto* r) { m_ssl.RSA_free(r); });
 
-    if (!rsa)
-        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
-                          "unable to allocate memory for RSA");
-
-    if (!m_ssl.PEM_read_bio_RSAPublicKey(bo.get(), &rsa, 0, 0)) {
-        m_ssl.RSA_free(rsa);
+    if (!rsaPtr) {
         return MAKE_ERROR(ErrorCode::InvalidArguments,
                           getLastSslError(m_ssl) +
                               " - unable to parse rsa key");
@@ -263,7 +255,7 @@ std::optional<StackedError> RsaKey::fromPublicKey(const string& pubKey) {
 
     {
         unique_lock lock(m_rsaMutex);
-        m_rsa = Ptr<RSA>(rsa, [this](auto* r) { m_ssl.RSA_free(r); });
+        m_rsa = move(rsaPtr);
     }
 
     shared_lock lock(m_rsaMutex);

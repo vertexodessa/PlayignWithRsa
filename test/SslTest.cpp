@@ -274,7 +274,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_set_word(NotNull(), 3)).Times(1);
-    EXPECT_CALL(ssl, RSA_new()).Times(2);
+    EXPECT_CALL(ssl, RSA_new()).Times(1);
     EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
         .Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
@@ -300,7 +300,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     ASSERT_EQ(filesystem::file_size(privName), 887);
     ASSERT_EQ(filesystem::file_size(pubName), 247);
 
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
         .Times(1);
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
@@ -322,8 +322,6 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
 
-    EXPECT_CALL(ssl, RSA_new()).Times(2);
-
     ASSERT_FALSE(key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
@@ -331,7 +329,7 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
         .Times(1);
 
     ASSERT_FALSE(key2.fromPrivateKey(privKey));
@@ -356,11 +354,8 @@ TEST(RsaEngine, InvalidPrivKey) {
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
         .Times(1);
-
-    EXPECT_CALL(ssl, RSA_new()).Times(1);
-    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(1);
 
     auto err = key2.fromPrivateKey(invalidPrivKey);
     ASSERT_TRUE(err);
