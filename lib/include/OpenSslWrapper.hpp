@@ -45,5 +45,6 @@ class OpenSslWrapper {
     virtual void ERR_error_string_n(unsigned long e, char* buf,
                                     size_t len) const;
     virtual unsigned long ERR_get_error(void) const;
+    virtual long BIO_ctrl(BIO* bp, int cmd, long larg, void* parg) const;
 };
 } // namespace MyOpenSslExample

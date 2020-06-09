@@ -45,7 +45,8 @@ class RsaKey {
 
     std::optional<StackedError> saveToFiles(const filesystem::path& privPath,
                               const filesystem::path& pubPath);
-    std::optional<StackedError> readFromFile(const filesystem::path& priv);
+    std::optional<StackedError> readPrivateKeyFromFile(const filesystem::path& priv);
+    std::optional<StackedError> readPublicKeyFromFile(const filesystem::path& priv);
 
     Result<RSA*> getKey() const;
 

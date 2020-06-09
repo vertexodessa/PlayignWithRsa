@@ -18,9 +18,7 @@ RsaKey::RsaKey(const OpenSslWrapper& ssl, std::uint16_t bits, Exponent exponent)
 
 RsaKey::RsaKey(RsaKey&& other)
     : m_bits(other.m_bits), m_exponent(other.m_exponent),
-      m_ssl(std::move(other.m_ssl)), m_rsa(move(other.m_rsa)) /*,
-               m_initOnce(std::move(other.m_initOnce))*/
-{}
+      m_ssl(std::move(other.m_ssl)), m_rsa(move(other.m_rsa)) {}
 
 uint16_t RsaKey::keySize() const { return m_bits; }
 
@@ -72,7 +70,8 @@ RsaKey::saveToFiles(const filesystem::path& privPath,
     return {};
 }
 
-std::optional<StackedError> RsaKey::readFromFile(const filesystem::path& priv) {
+std::optional<StackedError>
+RsaKey::readPrivateKeyFromFile(const filesystem::path& priv) {
     ifstream privFile(getAbsolutePath(priv));
 
     if (!privFile.is_open()) {
@@ -88,6 +87,32 @@ std::optional<StackedError> RsaKey::readFromFile(const filesystem::path& priv) {
     }
 
     auto ret = fromPrivateKey(privStr);
+    if (ret)
+        return ADD_ERROR(*ret, ErrorCode::InvalidState, "");
+
+    shared_lock lock(m_rsaMutex);
+    return m_rsa.get()
+               ? std::optional<StackedError>{}
+               : MAKE_ERROR(ErrorCode::InvalidState, "m_rsa is not valid");
+}
+
+std::optional<StackedError>
+RsaKey::readPublicKeyFromFile(const filesystem::__cxx11::path& pub) {
+    ifstream pubFile(getAbsolutePath(pub));
+
+    if (!pubFile.is_open()) {
+        return MAKE_ERROR(ErrorCode::FileAccessError,
+                          "Unable to open file " + pub.string());
+    }
+
+    std::string pubStr((std::istreambuf_iterator<char>(pubFile)),
+                       std::istreambuf_iterator<char>());
+
+    if (pubStr.empty()) {
+        return MAKE_ERROR(ErrorCode::InvalidInput, "file content is empty");
+    }
+
+    auto ret = fromPublicKey(pubStr);
     if (ret)
         return ADD_ERROR(*ret, ErrorCode::InvalidState, "");
 

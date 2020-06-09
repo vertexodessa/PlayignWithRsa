@@ -306,7 +306,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     RsaKey otherKey(ssl);
 
-    ASSERT_FALSE(otherKey.readFromFile(privName));
+    ASSERT_FALSE(otherKey.readPrivateKeyFromFile(privName));
     ASSERT_EQ(key, otherKey);
 }
 

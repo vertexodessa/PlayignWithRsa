@@ -1,5 +1,7 @@
 #include <RsaEngine.hpp>
 
+#include <utils/SslError.hpp>
+
 #include <openssl/err.h>
 
 #include <algorithm>
@@ -19,26 +21,26 @@ namespace MyOpenSslExample {
 RsaEngine::RsaEngine(const MyOpenSslExample::OpenSslWrapper& ssl)
     : m_ssl(ssl) {}
 
-const auto processData = [](const RsaKey& key,
+const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
                             const vector<unsigned char>& data, auto* func,
                             bool encrypt) -> Result<vector<unsigned char>> {
     if (data.empty())
-        return MAKE_ERROR(ErrorCode::InvalidArguments, "data should not be empty");
+        return MAKE_ERROR(ErrorCode::InvalidArguments,
+                          "data should not be empty");
 
     auto keyPtr = key.getKey();
     if (!keyPtr)
         return MAKE_ERROR(keyPtr.errorCode(), "unable to get key");
 
     const int padding = RSA_PKCS1_PADDING;
-    auto rsaSize = RSA_size(keyPtr.value());
+    const auto rsaSize = RSA_size(keyPtr.value());
 
     // 11 for RSA_PKCS1_PADDING encryption (see man RSA_public_encrypt)
     const auto flen = encrypt ? 11 : 0;
     const auto iterSize = rsaSize - flen;
 
-    int dataSize = data.size();
-
-    auto bufSize = ((dataSize / rsaSize) + 1) * rsaSize;
+    const int dataSize = data.size();
+    const auto bufSize = ((dataSize / rsaSize) + 1) * rsaSize;
 
     vector<unsigned char> ret;
     vector<unsigned char> buffer;
@@ -55,9 +57,7 @@ const auto processData = [](const RsaKey& key,
                                       keyPtr.value(), padding);
 
         if (returned_length == -1) {
-            char buf[1024];
-            ERR_error_string_n(ERR_get_error(), buf, 1024);
-            return MAKE_ERROR(ErrorCode::EncryptionError, buf);
+            return MAKE_ERROR(ErrorCode::EncryptionError, getLastSslError(ssl));
         }
 
         ret.insert(end(ret), buffer.data(), buffer.data() + returned_length);
@@ -100,7 +100,8 @@ const auto processData = [](const RsaKey& key,
 
     for (auto& c : dest) {
         if (c.empty())
-            return MAKE_ERROR(ErrorCode::EncryptionError, "unable to encrypt data");
+            return MAKE_ERROR(ErrorCode::EncryptionError,
+                              "unable to encrypt data");
         ret.insert(end(ret), begin(c), end(c));
     }
 
@@ -111,16 +112,18 @@ const auto processData = [](const RsaKey& key,
 Result<vector<unsigned char>>
 RsaEngine::publicEncrypt(const RsaKey& key, const vector<unsigned char>& data) {
     using namespace std::placeholders;
-    auto func = bind(&OpenSslWrapper::RSA_public_encrypt, &m_ssl, _1, _2, _3, _4, _5);
-    return processData(key, data, &func, true);
+    auto func =
+        bind(&OpenSslWrapper::RSA_public_encrypt, &m_ssl, _1, _2, _3, _4, _5);
+    return processData(m_ssl, key, data, &func, true);
 }
 
 Result<vector<unsigned char>>
 RsaEngine::privateDecrypt(const RsaKey& key,
                           const vector<unsigned char>& data) {
     using namespace std::placeholders;
-    auto func = bind(&OpenSslWrapper::RSA_private_decrypt, &m_ssl, _1, _2, _3, _4, _5);
-    return processData(key, data, &func, false);
+    auto func =
+        bind(&OpenSslWrapper::RSA_private_decrypt, &m_ssl, _1, _2, _3, _4, _5);
+    return processData(m_ssl, key, data, &func, false);
 }
 
 } // namespace MyOpenSslExample

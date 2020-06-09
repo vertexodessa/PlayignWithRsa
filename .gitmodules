@@ -4,3 +4,6 @@
 [submodule "expected"]
 	path = expected
 	url = https://github.com/TartanLlama/expected
+[submodule "app/third_party/ProgramOptions.hxx"]
+	path = app/third_party/ProgramOptions.hxx
+	url = https://github.com/Fytch/ProgramOptions.hxx
