@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include <functional>
+
 #if (__has_include(<execution>))
 #include <execution>
 #define PARALLEL_WAY 1
@@ -108,13 +110,17 @@ const auto processData = [](const RsaKey& key,
 
 Result<vector<unsigned char>>
 RsaEngine::publicEncrypt(const RsaKey& key, const vector<unsigned char>& data) {
-    return processData(key, data, &RSA_public_encrypt, true);
+    using namespace std::placeholders;
+    auto func = bind(&OpenSslWrapper::RSA_public_encrypt, &m_ssl, _1, _2, _3, _4, _5);
+    return processData(key, data, &func, true);
 }
 
 Result<vector<unsigned char>>
 RsaEngine::privateDecrypt(const RsaKey& key,
                           const vector<unsigned char>& data) {
-    return processData(key, data, &RSA_private_decrypt, false);
+    using namespace std::placeholders;
+    auto func = bind(&OpenSslWrapper::RSA_private_decrypt, &m_ssl, _1, _2, _3, _4, _5);
+    return processData(key, data, &func, false);
 }
 
 } // namespace MyOpenSslExample

@@ -1,5 +1,7 @@
 #include <OpenSslWrapper.hpp>
 
+#include <openssl/err.h>
+
 namespace MyOpenSslExample {
 RSA* OpenSslWrapper::RSA_new() const { return ::RSA_new(); }
 
@@ -71,11 +73,25 @@ int OpenSslWrapper::RSA_public_encrypt(int flen, const unsigned char* from,
     return ::RSA_public_encrypt(flen, from, to, rsa, padding);
 }
 
+int OpenSslWrapper::RSA_private_decrypt(int flen, const unsigned char* from,
+                                        unsigned char* to, RSA* rsa,
+                                        int padding) const {
+    return ::RSA_private_decrypt(flen, from, to, rsa, padding);
+}
+
 RSA* OpenSslWrapper::PEM_read_bio_RSAPublicKey(BIO* bp, RSA** x,
                                                pem_password_cb* cb,
                                                void* u) const {
     return ::PEM_read_bio_RSAPublicKey(bp, x, cb, u);
 }
 
+void OpenSslWrapper::ERR_error_string_n(unsigned long e, char* buf,
+                                        size_t len) const {
+    return ::ERR_error_string_n(e, buf, len);
+}
+
+unsigned long OpenSslWrapper::ERR_get_error() const {
+    return ::ERR_get_error();
+}
 
 } // namespace MyOpenSslExample

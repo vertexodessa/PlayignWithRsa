@@ -1,6 +1,7 @@
 #include "RsaKey.hpp"
 
 #include <BigNumber.hpp>
+#include <utils/SslError.hpp>
 
 #include <fstream>
 #include <openssl/err.h>
@@ -27,7 +28,7 @@ bool RsaKey::operator==(const RsaKey& other) const {
     const BIGNUM *n1, *e1, *d1;
     const BIGNUM *n2, *e2, *d2;
 
-    // TODO: compare mutexes under lock
+    shared_lock lock(m_rsaMutex);
     if (!m_rsa || !other.m_rsa)
         return false;
 
@@ -49,11 +50,7 @@ RsaKey::saveToFiles(const filesystem::path& privPath,
     auto keys = asStrings();
 
     if (!keys) {
-        StackedError oldError(ErrDesc{keys.errorCode(),
-                                      "asStrings returned error code", __FILE__,
-                                      __LINE__});
-        // MAKE_ERROR2(keys.errorCode(), "asStrings returned error code");
-        return ADD_ERROR(oldError, ErrorCode::InvalidState,
+        return ADD_ERROR(keys.error(), ErrorCode::InvalidState,
                          "Could not convert key to strings");
     }
 
@@ -75,26 +72,29 @@ RsaKey::saveToFiles(const filesystem::path& privPath,
     return {};
 }
 
-ErrorCode RsaKey::readFromFile(const filesystem::path& priv) {
+std::optional<StackedError> RsaKey::readFromFile(const filesystem::path& priv) {
     ifstream privFile(getAbsolutePath(priv));
 
     if (!privFile.is_open()) {
-        return ErrorCode::FileAccessError;
+        return MAKE_ERROR(ErrorCode::FileAccessError,
+                          "Unable to open file " + priv.string());
     }
 
     std::string privStr((std::istreambuf_iterator<char>(privFile)),
                         std::istreambuf_iterator<char>());
 
     if (privStr.empty()) {
-        return ErrorCode::InvalidInput;
+        return MAKE_ERROR(ErrorCode::InvalidInput, "file content is empty");
     }
 
     auto ret = fromPrivateKey(privStr);
-    if (ret != ErrorCode::NoError)
-        return ret;
+    if (ret)
+        return ADD_ERROR(*ret, ErrorCode::InvalidState, "");
 
     shared_lock lock(m_rsaMutex);
-    return m_rsa.get() ? ErrorCode::NoError : ErrorCode::InvalidState;
+    return m_rsa.get()
+               ? std::optional<StackedError>{}
+               : MAKE_ERROR(ErrorCode::InvalidState, "m_rsa is not valid");
 }
 
 optional<StackedError> RsaKey::initialize() const {
@@ -125,8 +125,11 @@ optional<StackedError> RsaKey::initialize() const {
 
     {
         unique_lock lock(m_rsaMutex);
-        m_rsa =
-            RsaKeyPtr(m_ssl.RSA_new(), [this](RSA* r) { m_ssl.RSA_free(r); });
+        // while we were creating bigNumber, another thread could've already
+        // initialized the rsa, so we need to double-check it under lock
+        if (!m_rsa)
+            m_rsa = RsaKeyPtr(m_ssl.RSA_new(),
+                              [this](RSA* r) { m_ssl.RSA_free(r); });
     }
     shared_lock lock(m_rsaMutex);
 
@@ -200,20 +203,27 @@ Result<std::pair<string, string>> RsaKey::asStrings() const {
     return Result(pair{pri_key, pub_key});
 }
 
-ErrorCode RsaKey::fromPrivateKey(const std::string& privKey) {
+std::optional<StackedError> RsaKey::fromPrivateKey(const std::string& privKey) {
     auto bo =
         unique_ptr<BIO, Deleter<BIO>>(m_ssl.BIO_new(m_ssl.BIO_s_mem()),
                                       [this](auto* p) { m_ssl.BIO_vfree(p); });
 
     if (!m_ssl.BIO_write(bo.get(), privKey.data(), privKey.size()))
-        return ErrorCode::MemoryAllocationError;
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          getLastSslError(m_ssl));
 
-    RSA* rsa = RSA_new();
+    RSA* rsa = m_ssl.RSA_new();
+
     if (!rsa)
-        return ErrorCode::MemoryAllocationError;
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          "unable to allocate memory for RSA");
 
-    if (!m_ssl.PEM_read_bio_RSAPrivateKey(bo.get(), &rsa, 0, 0))
-        return ErrorCode::InvalidArguments;
+    if (!m_ssl.PEM_read_bio_RSAPrivateKey(bo.get(), &rsa, 0, 0)) {
+        m_ssl.RSA_free(rsa);
+        return MAKE_ERROR(ErrorCode::InvalidArguments,
+                          getLastSslError(m_ssl) +
+                              " - unable to parse rsa key");
+    }
 
     {
         unique_lock lock(m_rsaMutex);
@@ -222,26 +232,34 @@ ErrorCode RsaKey::fromPrivateKey(const std::string& privKey) {
     shared_lock lock(m_rsaMutex);
 
     if (!m_rsa)
-        return ErrorCode::MemoryAllocationError;
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          getLastSslError(m_ssl) +
+                              " unable to allocate memory for RSA");
 
-    return m_rsa ? ErrorCode::NoError : ErrorCode::InvalidState;
+    return optional<StackedError>{};
 }
 
-ErrorCode RsaKey::fromPublicKey(const string& pubKey) {
+std::optional<StackedError> RsaKey::fromPublicKey(const string& pubKey) {
     auto bo =
         unique_ptr<BIO, Deleter<BIO>>(m_ssl.BIO_new(m_ssl.BIO_s_mem()),
                                       [this](auto* p) { m_ssl.BIO_vfree(p); });
 
     if (!m_ssl.BIO_write(bo.get(), pubKey.data(), pubKey.size()))
-        return ErrorCode::MemoryAllocationError;
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          getLastSslError(m_ssl));
 
-    RSA* rsa = RSA_new();
+    RSA* rsa = m_ssl.RSA_new();
 
     if (!rsa)
-        return ErrorCode::MemoryAllocationError;
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          "unable to allocate memory for RSA");
 
-    if (!m_ssl.PEM_read_bio_RSAPublicKey(bo.get(), &rsa, 0, 0))
-        return ErrorCode::InvalidArguments;
+    if (!m_ssl.PEM_read_bio_RSAPublicKey(bo.get(), &rsa, 0, 0)) {
+        m_ssl.RSA_free(rsa);
+        return MAKE_ERROR(ErrorCode::InvalidArguments,
+                          getLastSslError(m_ssl) +
+                              " - unable to parse rsa key");
+    }
 
     {
         unique_lock lock(m_rsaMutex);
@@ -249,7 +267,12 @@ ErrorCode RsaKey::fromPublicKey(const string& pubKey) {
     }
 
     shared_lock lock(m_rsaMutex);
-    return m_rsa ? ErrorCode::NoError : ErrorCode::InvalidState;
+    if (!m_rsa)
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          getLastSslError(m_ssl) +
+                              " unable to allocate memory for RSA");
+
+    return optional<StackedError>{};
 }
 
 Result<RSA*> RsaKey::getKey() const {

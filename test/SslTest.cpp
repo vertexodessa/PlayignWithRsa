@@ -33,6 +33,22 @@ IHIzcOlyhvHIXfL7nUsCQDgpPEMZ4y7VkLR3wl8E081XvGtmA+ETsM0ipwPDLOhe\n\
 xm2HOptY8p6yh9V4jGk5MU3BpJp0Jw47rqVTWgBLDtc=\n\
 -----END RSA PRIVATE KEY-----\n";
 
+constexpr auto invalidPrivKey = "-----BEGIN RSA PRIVATE KEY-----\n\
+MIICXAIBAAKBgQDXAW7AXMYXltS7VoF2QPomOPzr4S5gXVwQILwyEwo2BJkxBDHz\n\
+KYiYLUo9NLTPCSAP/5oGZk/vWz1+DxIoo0uHePEv7Zt7ffpeJD9F3rDHtrIbbMVh\n\
+Z70k5HSxDqEqNBYvvXGP0IK5yFtHcNxXnehyheu1QqkVL773Ma35w0wKTQIBAwKB\n\
+gQCPVknVky66ZI3SOaukK1Fu0KidQMmVk5K1ayghYgbOrbt2Asv3cQW6yNwozc3f\n\
+W2q1VRFZmYqfkij+tLbFwjJZFvTHgLje3baqlhIDyTrbkZ7R+PQ4yXVJB44OKKdR\n\
+pWG4JdHBTkfaVeH99ew0FezrZA2CXYRJspSIQhCQ4wc0KwJBAPypD45gy5iFTK8h\n\
+9otkZ0/+fasetVIDsslFx5rVfIth0vY3xd8aAcoCpii9heOdGw6LwQsVfUW0YGPo\n\
+0000000000000000000000000000000000000000000000000000000000000000\n\
+haRXPIOZZ/ZhS7CrTSleK8pqrIzseWvxAkEAqHC1CZXdEFjdyhakXO2aNVRTx2nO\n\
+Nq0h24PaZzj9skE3Ts/ZP2ar3AHEGykD7RNnXwfWB2Oo2SLq7UW3rC/gEwJBAJE7\n\
+ThQY67tCC7gBhm5NZLLY7Iglj0UGWF/mjXngd3XBMF7/b/1TSv5ZGDooV7uapEDd\n\
+IHIzcOlyhvHIXfL7nUsCQDgpPEMZ4y7VkLR3wl8E081XvGtmA+ETsM0ipwPDLOhe\n\
+xm2HOptY8p6yh9V4jGk5MU3BpJp0Jw47rqVTWgBLDtc=\n\
+-----END RSA PRIVATE KEY-----\n";
+
 const string pubKey = "\
 -----BEGIN RSA PUBLIC KEY-----\n\
 MIGHAoGBANcBbsBcxheW1LtWgXZA+iY4/OvhLmBdXBAgvDITCjYEmTEEMfMpiJgt\n\
@@ -206,7 +222,6 @@ TEST(RsaKey, DifferentKeyIsGeneratedEachTime) {
     auto keyPtr1 = key1.getKey();
     ASSERT_TRUE(keyPtr1);
 
-
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
     EXPECT_CALL(ssl, BN_set_word(NotNull(), RSA_3)).Times(1);
@@ -259,7 +274,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
 
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_set_word(NotNull(), 3)).Times(1);
-    EXPECT_CALL(ssl, RSA_new()).Times(1);
+    EXPECT_CALL(ssl, RSA_new()).Times(2);
     EXPECT_CALL(ssl, RSA_generate_key_ex(NotNull(), 1024, NotNull(), NULL))
         .Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
@@ -291,7 +306,7 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     RsaKey otherKey(ssl);
 
-    ASSERT_EQ(otherKey.readFromFile(privName), ErrorCode::NoError);
+    ASSERT_FALSE(otherKey.readFromFile(privName));
     ASSERT_EQ(key, otherKey);
 }
 
@@ -307,7 +322,9 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
 
-    ASSERT_EQ(ErrorCode::NoError, key.fromPublicKey(pubKey));
+    EXPECT_CALL(ssl, RSA_new()).Times(2);
+
+    ASSERT_FALSE(key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
     EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
@@ -317,7 +334,7 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
         .Times(1);
 
-    ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
+    ASSERT_FALSE(key2.fromPrivateKey(privKey));
 
     auto val = engine.publicEncrypt(key, in);
     ASSERT_TRUE(val);
@@ -331,6 +348,29 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 }
 
+TEST(RsaEngine, InvalidPrivKey) {
+    MockOpenSslWrapper ssl;
+
+    RsaKey key2(ssl);
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), NotNull(), 0, 0))
+        .Times(1);
+
+    EXPECT_CALL(ssl, RSA_new()).Times(1);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(1);
+
+    auto err = key2.fromPrivateKey(invalidPrivKey);
+    ASSERT_TRUE(err);
+
+    const char errStr[] =
+        "error:0D07207B:asn1 encoding routines:ASN1_get_object:header too long "
+        "- unable to parse rsa key";
+    ASSERT_NE(err->asText().find(errStr), string::npos);
+}
+
 TEST(RsaEngine, EncryptLargeFile) {
     MockOpenSslWrapper ssl;
     RsaEngine engine(ssl);
@@ -338,10 +378,10 @@ TEST(RsaEngine, EncryptLargeFile) {
     vector<unsigned char> in(begin(largeText), end(largeText));
 
     RsaKey key(ssl);
-    ASSERT_EQ(ErrorCode::NoError, key.fromPublicKey(pubKey));
+    ASSERT_FALSE(key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
-    ASSERT_EQ(ErrorCode::NoError, key2.fromPrivateKey(privKey));
+    ASSERT_FALSE(key2.fromPrivateKey(privKey));
 
     ASSERT_NE(key, key2);
 
@@ -353,4 +393,3 @@ TEST(RsaEngine, EncryptLargeFile) {
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
               string(begin(largeText), end(largeText)));
 }
-

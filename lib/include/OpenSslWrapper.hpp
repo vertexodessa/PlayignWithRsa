@@ -37,10 +37,13 @@ class OpenSslWrapper {
     virtual int RSA_public_encrypt(int flen, const unsigned char* from,
                                    unsigned char* to, RSA* rsa,
                                    int padding) const;
-    //    virtual RSA* PEM_read_bio_RSA_PUBKEY(BIO* bp, RSA** x,
-    //    pem_password_cb* cb,
-    //                                         void* u) const;
+    virtual int RSA_private_decrypt(int flen, const unsigned char* from,
+                                    unsigned char* to, RSA* rsa,
+                                    int padding) const;
     virtual RSA* PEM_read_bio_RSAPublicKey(BIO* bp, RSA** x,
                                            pem_password_cb* cb, void* u) const;
+    virtual void ERR_error_string_n(unsigned long e, char* buf,
+                                    size_t len) const;
+    virtual unsigned long ERR_get_error(void) const;
 };
 } // namespace MyOpenSslExample

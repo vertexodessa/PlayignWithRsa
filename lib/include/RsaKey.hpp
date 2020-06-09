@@ -36,23 +36,23 @@ class RsaKey {
     RsaKey(RsaKey&& other);
 
     RsaKey(const RsaKey& other) = delete;
-    virtual ~RsaKey() = default;
+    ~RsaKey() = default;
 
     uint16_t keySize() const;
 
     bool operator==(const RsaKey& other) const;
     bool operator!=(const RsaKey& other) const { return !(*this == other); };
 
-    virtual std::optional<StackedError> saveToFiles(const filesystem::path& privPath,
+    std::optional<StackedError> saveToFiles(const filesystem::path& privPath,
                               const filesystem::path& pubPath);
-    virtual ErrorCode readFromFile(const filesystem::path& priv);
+    std::optional<StackedError> readFromFile(const filesystem::path& priv);
 
     Result<RSA*> getKey() const;
 
     Result<std::pair<std::string, std::string>> asStrings() const;
 
-    virtual ErrorCode fromPrivateKey(const std::string& privKey);
-    virtual ErrorCode fromPublicKey(const std::string& privKey);
+    std::optional<StackedError> fromPrivateKey(const std::string& privKey);
+    std::optional<StackedError> fromPublicKey(const std::string& privKey);
 
   protected:
   private:
