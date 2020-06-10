@@ -7,8 +7,6 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-constexpr bool DEBUG = false;
-
 using namespace std;
 
 namespace MyOpenSslExample {
@@ -44,16 +42,13 @@ bool RsaKey::operator==(const RsaKey& other) const {
 
 std::optional<StackedError>
 RsaKey::saveToFiles(const filesystem::path& privPath,
-                    const filesystem::path& pubPath) {
+                    const filesystem::path& pubPath) const {
     auto keys = asStrings();
 
     if (!keys) {
         return ADD_ERROR(keys.error(), ErrorCode::InvalidState,
                          "Could not convert key to strings");
     }
-
-    if constexpr (DEBUG)
-        cout << keys.value().first << "\n" << keys.value().second << "\n";
 
     ofstream privFile(getAbsolutePath(privPath));
     ofstream pubFile(getAbsolutePath(pubPath));
@@ -131,14 +126,10 @@ optional<StackedError> RsaKey::initialize() const {
     }
 
     BigNumber bne(m_ssl);
-    if (!bne.init())
-        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
-                          "unable to init bignumber");
+
     if (!bne.get()) {
-        if (!bne.init()) {
-            return MAKE_ERROR(ErrorCode::InvalidArguments,
-                              "Unable to init bignumber");
-        }
+        return MAKE_ERROR(ErrorCode::InvalidArguments,
+                          "Unable to init bignumber");
     }
 
     auto exponent = static_cast<int>(m_exponent);

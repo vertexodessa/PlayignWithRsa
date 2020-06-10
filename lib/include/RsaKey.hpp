@@ -44,7 +44,7 @@ class RsaKey {
     bool operator!=(const RsaKey& other) const { return !(*this == other); };
 
     std::optional<StackedError> saveToFiles(const filesystem::path& privPath,
-                              const filesystem::path& pubPath);
+                              const filesystem::path& pubPath) const;
     std::optional<StackedError> readPrivateKeyFromFile(const filesystem::path& priv);
     std::optional<StackedError> readPublicKeyFromFile(const filesystem::path& priv);
 
@@ -64,9 +64,7 @@ class RsaKey {
     const Exponent m_exponent;
     const OpenSslWrapper& m_ssl;
 
-    // FIXME: this cannot be used with move ctor
     mutable std::shared_mutex m_rsaMutex;
-
     mutable RsaKeyPtr m_rsa;
 };
 

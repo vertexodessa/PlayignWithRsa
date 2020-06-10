@@ -217,7 +217,6 @@ TEST(BigNumber, InitSequence) {
     EXPECT_CALL(ssl, BN_new()).Times(1);
     EXPECT_CALL(ssl, BN_clear_free(NotNull())).Times(1);
 
-    ASSERT_TRUE(bn.init());
     ASSERT_TRUE(!!bn.get());
 }
 

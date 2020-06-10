@@ -2,10 +2,9 @@
 
 #include <functional>
 #include <memory>
+#include <shared_mutex>
 
 #include <utils/Deleter.hpp>
-
-#include <iostream>
 
 namespace MyOpenSslExample {
 class OpenSslWrapper;
@@ -19,13 +18,14 @@ class BigNumber {
     explicit BigNumber(const OpenSslWrapper& ssl);
     virtual ~BigNumber() = default;
 
-    virtual bool init();
-    virtual BIGNUM* get() const;
-    virtual int setWord(BN_ULONG w);
+    BIGNUM* get() const;
+    int setWord(BN_ULONG w);
 
   private:
+    bool init() const;
     const OpenSslWrapper& m_ssl;
-    BigNumberPtr m_num{nullptr};
+    mutable std::shared_mutex m_ptrMutex;
+    mutable BigNumberPtr m_num{nullptr};
 };
 
 } // namespace MyOpenSslExample

@@ -56,6 +56,7 @@ class StackedError {
 
         m_stack.push_back(desc);
     }
+    StackedError(const StackedError& other) { m_stack = other.m_stack; }
 
     std::string asText() const {
         std::stringstream ss;
