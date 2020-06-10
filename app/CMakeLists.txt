@@ -23,7 +23,7 @@ pkg_search_module(OPENSSL openssl REQUIRED )
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(${TARGET} ${SOURCE_FILES})
 
-target_compile_options(${TARGET} PUBLIC -fexceptions -fdiagnostics-color=always)
+target_compile_options(${TARGET} PUBLIC -fno-exceptions -fdiagnostics-color=always)
 target_link_libraries(${TARGET} PUBLIC ${OPENSSL_LIBRARIES} ProgramOptionsHxx openssl_mylib)
 target_include_directories(${TARGET} PRIVATE ${OPENSSL_INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/include)
 
