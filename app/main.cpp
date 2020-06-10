@@ -42,7 +42,7 @@ int encrypt_file(const string& publicKeyPath, const string& filename,
     }
 
     ofstream out(out_filename);
-    out << string(encrypted.value().begin(), encrypted.value().end());
+    out << string(encrypted->begin(), encrypted->end());
     return 0;
 }
 
@@ -79,7 +79,7 @@ int decrypt_file(const string& privateKeyPath, const string& filename,
     }
 
     ofstream out(out_filename);
-    out << string(decrypted.value().begin(), decrypted.value().end());
+    out << string(decrypted->begin(), decrypted->end());
     return 0;
 }
 

@@ -96,7 +96,7 @@ template <typename T> class Result {
     inline StackedError error() const;
 
     inline operator bool_type() const;
-    inline T& operator->() const;
+    inline T* operator->() const;
     inline T& operator*() const;
 
   private:
@@ -137,7 +137,7 @@ template <typename T> StackedError Result<T>::error() const {
     return ret;
 }
 
-template <typename T> T& Result<T>::operator->() const { return value(); }
+template <typename T> T* Result<T>::operator->() const { return &value(); }
 
 template <typename T> T& Result<T>::operator*() const { return value(); }
 
