@@ -21,11 +21,17 @@ int encrypt_file(const string& publicKeyPath, const string& filename,
     ifstream input(filename);
 
     if (!input.is_open()) {
-        ///
+        cout << "Could not open " << filename << endl;
+        return -1;
     }
 
     std::vector<unsigned char> data((std::istreambuf_iterator<char>(input)),
                                     std::istreambuf_iterator<char>());
+
+    if (data.empty()) {
+        cout << "File " << filename << " is empty" << endl;
+        return -1;
+    }
 
     auto encrypted = eng.publicEncrypt(pubKey, data);
 
@@ -53,11 +59,17 @@ int decrypt_file(const string& privateKeyPath, const string& filename,
     ifstream input(filename);
 
     if (!input.is_open()) {
-        ///
+        cout << "Could not open " << filename << endl;
+        return -1;
     }
 
     std::vector<unsigned char> data((std::istreambuf_iterator<char>(input)),
                                     std::istreambuf_iterator<char>());
+
+    if (data.empty()) {
+        cout << "File " << filename << " is empty" << endl;
+        return -1;
+    }
 
     auto decrypted = eng.privateDecrypt(privKey, data);
 
