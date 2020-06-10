@@ -1,10 +1,12 @@
 #pragma once
 
+#include <OpenSslWrapper.hpp>
+#include <utils/Deleter.hpp>
+
 #include <functional>
 #include <memory>
 #include <shared_mutex>
 
-#include <utils/Deleter.hpp>
 
 namespace MyOpenSslExample {
 class OpenSslWrapper;

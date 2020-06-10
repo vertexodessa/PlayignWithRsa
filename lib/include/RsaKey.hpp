@@ -1,20 +1,10 @@
 #pragma once
 
-#include <cstddef>
-#include <functional>
-#include <memory>
-#include <mutex>
 #include <shared_mutex>
-#include <optional>
-#include <variant>
 
 #include <OpenSslWrapper.hpp>
 #include <Result.hpp>
 #include <utils/Deleter.hpp>
-
-// TODO: forward-declare everything and move to .cpp
-#include <openssl/rsa.h>
-#include <openssl/ssl.h>
 
 #include <experimental/filesystem>
 

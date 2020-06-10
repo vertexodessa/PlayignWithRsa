@@ -4,8 +4,6 @@
 #include <utils/SslError.hpp>
 
 #include <fstream>
-#include <openssl/err.h>
-#include <openssl/rsa.h>
 
 using namespace std;
 

@@ -1,14 +1,14 @@
-#include <iostream>
+#include <BigNumber.hpp>
+#include <RsaEngine.hpp>
+#include <RsaKey.hpp>
+
+#include <utils/Deleter.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <iostream>
 #include <memory>
-#include <utils/Deleter.hpp>
-
-#include <BigNumber.hpp>
-#include <RsaEngine.hpp>
-#include <RsaKey.hpp>
 
 using namespace std;
 using namespace testing;

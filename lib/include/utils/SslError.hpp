@@ -1,9 +1,7 @@
 #pragma once
 
 #include <OpenSslWrapper.hpp>
-
 #include <string>
-#include <openssl/err.h>
 
 namespace MyOpenSslExample {
 
