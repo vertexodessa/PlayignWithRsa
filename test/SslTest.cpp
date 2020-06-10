@@ -156,6 +156,29 @@ class MockOpenSslWrapper : public OpenSslWrapper {
                 (const, override));
     MOCK_METHOD(RSA*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey), (const, override));
 
+    MOCK_METHOD(void, RSA_get0_key,
+                (const RSA* r, const BIGNUM** n, const BIGNUM** e,
+                 const BIGNUM** d),
+                (const, override));
+    MOCK_METHOD(int, BN_cmp, (const BIGNUM* a, const BIGNUM* b),
+                (const, override));
+    MOCK_METHOD(int, RSA_public_encrypt,
+                (int flen, const unsigned char* from, unsigned char* to,
+                 RSA* rsa, int padding),
+                (const, override));
+    MOCK_METHOD(int, RSA_private_decrypt,
+                (int flen, const unsigned char* from, unsigned char* to,
+                 RSA* rsa, int padding),
+                (const, override));
+    MOCK_METHOD(RSA*, PEM_read_bio_RSAPublicKey,
+                (BIO * bp, RSA** x, pem_password_cb* cb, void* u),
+                (const, override));
+    MOCK_METHOD(void, ERR_error_string_n,
+                (unsigned long e, char* buf, size_t len), (const, override));
+    MOCK_METHOD(unsigned long, ERR_get_error, (), (const, override));
+    MOCK_METHOD(long, BIO_ctrl, (BIO * bp, int cmd, long larg, void* parg),
+                (const, override));
+
     MockOpenSslWrapper() {
         FORWARD_TO_BASE(RSA_new);
         FORWARD_TO_BASE(RSA_free);
@@ -175,6 +198,16 @@ class MockOpenSslWrapper : public OpenSslWrapper {
         FORWARD_TO_BASE(PEM_write_bio_RSAPrivateKey);
         FORWARD_TO_BASE(PEM_read_bio_RSAPrivateKey);
         FORWARD_TO_BASE(EVP_PKEY_get1_RSA);
+
+        FORWARD_TO_BASE(RSA_get0_key);
+
+        FORWARD_TO_BASE(BN_cmp);
+        FORWARD_TO_BASE(RSA_public_encrypt);
+        FORWARD_TO_BASE(RSA_private_decrypt);
+        FORWARD_TO_BASE(PEM_read_bio_RSAPublicKey);
+        FORWARD_TO_BASE(ERR_error_string_n);
+        FORWARD_TO_BASE(ERR_get_error);
+        FORWARD_TO_BASE(BIO_ctrl);
     }
 };
 
@@ -262,6 +295,7 @@ TEST(RsaKey, CorrectKeySaveToFile) {
         .Times(1);
     EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
 
+    EXPECT_CALL(ssl, BIO_ctrl(NotNull(), 10, 0, NULL)).Times(2);
     ASSERT_FALSE(key.saveToFiles(privName, pubName));
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
@@ -294,17 +328,20 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 247)).Times(1);
 
+    EXPECT_CALL(ssl, BIO_ctrl(NotNull(), 10, 0, NULL)).Times(2);
     ASSERT_FALSE(key.saveToFiles(privName, pubName));
 
     // check file sizes
     ASSERT_EQ(filesystem::file_size(privName), 887);
     ASSERT_EQ(filesystem::file_size(pubName), 247);
 
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
-        .Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     RsaKey otherKey(ssl);
+
+    EXPECT_CALL(ssl, RSA_get0_key(_, _, _, _)).Times(2);
+    EXPECT_CALL(ssl, BN_cmp(_, _)).Times(3);
 
     ASSERT_FALSE(otherKey.readPrivateKeyFromFile(privName));
     ASSERT_EQ(key, otherKey);
@@ -322,6 +359,7 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
 
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPublicKey(NotNull(), 0, 0, 0)).Times(1);
     ASSERT_FALSE(key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
@@ -329,8 +367,9 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
-        .Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
+    EXPECT_CALL(ssl, RSA_get0_key(_, _, _, _)).Times(2);
+    EXPECT_CALL(ssl, RSA_public_encrypt(5, _, _, _, 1)).Times(1);
 
     ASSERT_FALSE(key2.fromPrivateKey(privKey));
 
@@ -338,6 +377,7 @@ TEST(RsaEngine, Encrypt) {
     ASSERT_TRUE(val);
     ASSERT_NE(key, key2);
 
+    EXPECT_CALL(ssl, RSA_private_decrypt(128, _, _, _, 1)).Times(1);
     auto decrypted = engine.privateDecrypt(key2, val.value());
     ASSERT_TRUE(decrypted);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
@@ -354,8 +394,10 @@ TEST(RsaEngine, InvalidPrivKey) {
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
     EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0))
-        .Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
+
+    EXPECT_CALL(ssl, ERR_get_error()).Times(1);
+    EXPECT_CALL(ssl, ERR_error_string_n(_, _, 1024)).Times(1);
 
     auto err = key2.fromPrivateKey(invalidPrivKey);
     ASSERT_TRUE(err);
@@ -373,16 +415,36 @@ TEST(RsaEngine, EncryptLargeFile) {
     vector<unsigned char> in(begin(largeText), end(largeText));
 
     RsaKey key(ssl);
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPublicKey(NotNull(), 0, 0, 0)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+
     ASSERT_FALSE(key.fromPublicKey(pubKey));
 
     RsaKey key2(ssl);
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+
     ASSERT_FALSE(key2.fromPrivateKey(privKey));
 
+    EXPECT_CALL(ssl, RSA_get0_key(_, _, _, _)).Times(2);
     ASSERT_NE(key, key2);
+
+    EXPECT_CALL(ssl, RSA_public_encrypt(117, _, _, _, 1)).Times(34);
+    EXPECT_CALL(ssl, RSA_public_encrypt(19, _, _, _, 1)).Times(1);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 
     auto val = engine.publicEncrypt(key, in);
     ASSERT_TRUE(val);
 
+    EXPECT_CALL(ssl, RSA_private_decrypt(128, _, _, _, 1)).Times(35);
     auto decrypted = engine.privateDecrypt(key2, val.value());
     ASSERT_TRUE(decrypted);
     ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),

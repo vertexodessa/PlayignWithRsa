@@ -194,19 +194,18 @@ Result<std::pair<string, string>> RsaKey::asStrings() const {
 
     if (m_ssl.PEM_write_bio_RSAPrivateKey(pri.get(), keypair.value(), NULL,
                                           NULL, 0, NULL, NULL) < 1) {
-        char buf[1024];
-        ERR_error_string_n(ERR_get_error(), buf, 1024);
-        return MAKE_ERROR(ErrorCode::SSLBackendError, buf);
+        return MAKE_ERROR(ErrorCode::SSLBackendError, getLastSslError(m_ssl));
     }
 
     if (m_ssl.PEM_write_bio_RSAPublicKey(pub.get(), keypair.value()) < 1) {
-        char buf[1024];
-        ERR_error_string_n(ERR_get_error(), buf, 1024);
-        return MAKE_ERROR(ErrorCode::SSLBackendError, buf);
+        return MAKE_ERROR(ErrorCode::SSLBackendError, getLastSslError(m_ssl));
     }
 
-    int pri_len = BIO_pending(pri.get());
-    int pub_len = BIO_pending(pub.get());
+    // BIO_pending(pri.get());
+    int pri_len = m_ssl.BIO_ctrl(pri.get(), BIO_CTRL_PENDING, 0, NULL);
+
+    // BIO_pending(pub.get());
+    int pub_len = m_ssl.BIO_ctrl(pub.get(), BIO_CTRL_PENDING, 0, NULL);
 
     if (pri_len < 1 || pub_len < 1)
         return MAKE_ERROR(ErrorCode::SSLBackendError,

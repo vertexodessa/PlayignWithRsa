@@ -95,7 +95,7 @@ unsigned long OpenSslWrapper::ERR_get_error() const {
 }
 
 long OpenSslWrapper::BIO_ctrl(BIO* bp, int cmd, long larg, void* parg) const {
-    return BIO_ctrl(bp, cmd, larg, parg);
+    return ::BIO_ctrl(bp, cmd, larg, parg);
 }
 
 } // namespace MyOpenSslExample
