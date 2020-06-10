@@ -16,6 +16,26 @@ enum class ErrorCode {
     EncryptionError
 };
 
+static inline std::string to_string(const ErrorCode& code) {
+#define F(x)                                                                   \
+    case ErrorCode::x:                                                         \
+        return std::string(#x);
+
+    switch (code) {
+        F(NoError)
+        F(FileAccessError)
+        F(MemoryAllocationError)
+        F(InvalidState)
+        F(InvalidArguments)
+        F(InvalidInput)
+        F(SSLBackendError)
+        F(EncryptionError)
+    default:
+        return {};
+    }
+#undef F
+}
+
 struct ErrDesc {
     ErrorCode err{ErrorCode::NoError};
     std::string description{"Empty description"};
@@ -40,7 +60,8 @@ class StackedError {
     std::string asText() const {
         std::stringstream ss;
         for (auto i = std::rbegin(m_stack); i != std::rend(m_stack); ++i) {
-            ss << i->file << ":" << i->line << ": " << i->description << "\n";
+            ss << i->file << ":" << i->line << ": " << to_string(i->err) << ": "
+               << i->description << "\n";
         }
         return ss.str();
     }
