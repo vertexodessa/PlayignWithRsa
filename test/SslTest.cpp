@@ -128,14 +128,29 @@ class MockOpenSslWrapper : public OpenSslWrapper {
 
     MOCK_METHOD(RSA*, RSA_new, (), (const, override));
     MOCK_METHOD(void, RSA_free, (RSA*), (const, override));
-
     MOCK_METHOD(int, RSA_generate_key_ex,
                 (RSA * rsa, int bits, BIGNUM* e, BN_GENCB* cb),
                 (const, override));
+    MOCK_METHOD(void, RSA_get0_key,
+                (const RSA* r, const BIGNUM** n, const BIGNUM** e,
+                 const BIGNUM** d),
+                (const, override));
+    MOCK_METHOD(int, RSA_public_encrypt,
+                (int flen, const unsigned char* from, unsigned char* to,
+                 RSA* rsa, int padding),
+                (const, override));
+    MOCK_METHOD(int, RSA_private_decrypt,
+                (int flen, const unsigned char* from, unsigned char* to,
+                 RSA* rsa, int padding),
+                (const, override));
+
+    MOCK_METHOD(RSA*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey), (const, override));
 
     MOCK_METHOD(BIGNUM*, BN_new, (), (const, override));
     MOCK_METHOD(void, BN_clear_free, (BIGNUM*), (const, override));
     MOCK_METHOD(int, BN_set_word, (BIGNUM * a, BN_ULONG w), (const, override));
+    MOCK_METHOD(int, BN_cmp, (const BIGNUM* a, const BIGNUM* b),
+                (const, override));
 
     MOCK_METHOD(const BIO_METHOD*, BIO_s_mem, (), (const, override));
     MOCK_METHOD(BIO*, BIO_new, (const BIO_METHOD* type), (const, override));
@@ -154,28 +169,14 @@ class MockOpenSslWrapper : public OpenSslWrapper {
     MOCK_METHOD(RSA*, PEM_read_bio_RSAPrivateKey,
                 (BIO * bp, RSA** x, pem_password_cb* cb, void* u),
                 (const, override));
-    MOCK_METHOD(RSA*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey), (const, override));
-
-    MOCK_METHOD(void, RSA_get0_key,
-                (const RSA* r, const BIGNUM** n, const BIGNUM** e,
-                 const BIGNUM** d),
-                (const, override));
-    MOCK_METHOD(int, BN_cmp, (const BIGNUM* a, const BIGNUM* b),
-                (const, override));
-    MOCK_METHOD(int, RSA_public_encrypt,
-                (int flen, const unsigned char* from, unsigned char* to,
-                 RSA* rsa, int padding),
-                (const, override));
-    MOCK_METHOD(int, RSA_private_decrypt,
-                (int flen, const unsigned char* from, unsigned char* to,
-                 RSA* rsa, int padding),
-                (const, override));
     MOCK_METHOD(RSA*, PEM_read_bio_RSAPublicKey,
                 (BIO * bp, RSA** x, pem_password_cb* cb, void* u),
                 (const, override));
+
     MOCK_METHOD(void, ERR_error_string_n,
                 (unsigned long e, char* buf, size_t len), (const, override));
     MOCK_METHOD(unsigned long, ERR_get_error, (), (const, override));
+
     MOCK_METHOD(long, BIO_ctrl, (BIO * bp, int cmd, long larg, void* parg),
                 (const, override));
 
@@ -183,31 +184,31 @@ class MockOpenSslWrapper : public OpenSslWrapper {
         FORWARD_TO_BASE(RSA_new);
         FORWARD_TO_BASE(RSA_free);
         FORWARD_TO_BASE(RSA_generate_key_ex);
+        FORWARD_TO_BASE(RSA_public_encrypt);
+        FORWARD_TO_BASE(RSA_private_decrypt);
+        FORWARD_TO_BASE(RSA_get0_key);
 
         FORWARD_TO_BASE(BN_new);
         FORWARD_TO_BASE(BN_clear_free);
         FORWARD_TO_BASE(BN_set_word);
+        FORWARD_TO_BASE(BN_cmp);
 
         FORWARD_TO_BASE(BIO_s_mem);
         FORWARD_TO_BASE(BIO_new);
         FORWARD_TO_BASE(BIO_vfree);
         FORWARD_TO_BASE(BIO_read);
         FORWARD_TO_BASE(BIO_write);
+        FORWARD_TO_BASE(BIO_ctrl);
 
         FORWARD_TO_BASE(PEM_write_bio_RSAPublicKey);
         FORWARD_TO_BASE(PEM_write_bio_RSAPrivateKey);
         FORWARD_TO_BASE(PEM_read_bio_RSAPrivateKey);
+        FORWARD_TO_BASE(PEM_read_bio_RSAPublicKey);
+
         FORWARD_TO_BASE(EVP_PKEY_get1_RSA);
 
-        FORWARD_TO_BASE(RSA_get0_key);
-
-        FORWARD_TO_BASE(BN_cmp);
-        FORWARD_TO_BASE(RSA_public_encrypt);
-        FORWARD_TO_BASE(RSA_private_decrypt);
-        FORWARD_TO_BASE(PEM_read_bio_RSAPublicKey);
         FORWARD_TO_BASE(ERR_error_string_n);
         FORWARD_TO_BASE(ERR_get_error);
-        FORWARD_TO_BASE(BIO_ctrl);
     }
 };
 
