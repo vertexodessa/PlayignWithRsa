@@ -351,7 +351,7 @@ TEST(RsaEngine, Encrypt) {
     MockOpenSslWrapper ssl;
     RsaEngine engine(ssl);
 
-    vector<unsigned char> in(begin(smallText), end(smallText));
+    const vector<unsigned char> in(cbegin(smallText), cend(smallText));
 
     RsaKey key(ssl);
     EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
@@ -373,15 +373,15 @@ TEST(RsaEngine, Encrypt) {
 
     ASSERT_FALSE(key2.fromPrivateKey(privKey));
 
-    auto val = engine.publicEncrypt(key, in);
+    const auto val = engine.publicEncrypt(key, in);
     ASSERT_TRUE(val);
     ASSERT_NE(key, key2);
 
     EXPECT_CALL(ssl, RSA_private_decrypt(128, _, _, _, 1)).Times(1);
-    auto decrypted = engine.privateDecrypt(key2, val.value());
+    const auto decrypted = engine.privateDecrypt(key2, *val);
     ASSERT_TRUE(decrypted);
-    ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
-              string(begin(smallText), end(smallText)));
+    ASSERT_EQ(string(cbegin(*decrypted), cend(*decrypted)),
+              string(cbegin(smallText), cend(smallText)));
 
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 }
@@ -408,11 +408,11 @@ TEST(RsaEngine, InvalidPrivKey) {
     ASSERT_NE(err->asText().find(errStr), string::npos);
 }
 
-TEST(RsaEngine, EncryptLargeFile) {
+TEST(RsaEngine, EncryptLargeText) {
     MockOpenSslWrapper ssl;
     RsaEngine engine(ssl);
 
-    vector<unsigned char> in(begin(largeText), end(largeText));
+    const vector<unsigned char> in(cbegin(largeText), cend(largeText));
 
     RsaKey key(ssl);
 
@@ -441,12 +441,12 @@ TEST(RsaEngine, EncryptLargeFile) {
     EXPECT_CALL(ssl, RSA_public_encrypt(19, _, _, _, 1)).Times(1);
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 
-    auto val = engine.publicEncrypt(key, in);
+    const auto val = engine.publicEncrypt(key, in);
     ASSERT_TRUE(val);
 
     EXPECT_CALL(ssl, RSA_private_decrypt(128, _, _, _, 1)).Times(35);
-    auto decrypted = engine.privateDecrypt(key2, val.value());
+    const auto decrypted = engine.privateDecrypt(key2, *val);
     ASSERT_TRUE(decrypted);
-    ASSERT_EQ(string(begin(decrypted.value()), end(decrypted.value())),
-              string(begin(largeText), end(largeText)));
+    ASSERT_EQ(string(cbegin(*decrypted), cend(*decrypted)),
+              string(cbegin(largeText), cend(largeText)));
 }
