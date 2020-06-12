@@ -17,7 +17,7 @@ using namespace MyOpenSslExample;
 constexpr char privName[]{"./priv.key"};
 constexpr char pubName[]{"./pub.key"};
 
-constexpr auto privKey = "-----BEGIN RSA PRIVATE KEY-----\n\
+const string privKey = "-----BEGIN RSA PRIVATE KEY-----\n\
 MIICXAIBAAKBgQDXAW7AXMYXltS7VoF2QPomOPzr4S5gXVwQILwyEwo2BJkxBDHz\n\
 KYiYLUo9NLTPCSAP/5oGZk/vWz1+DxIoo0uHePEv7Zt7ffpeJD9F3rDHtrIbbMVh\n\
 Z70k5HSxDqEqNBYvvXGP0IK5yFtHcNxXnehyheu1QqkVL773Ma35w0wKTQIBAwKB\n\
@@ -33,7 +33,7 @@ IHIzcOlyhvHIXfL7nUsCQDgpPEMZ4y7VkLR3wl8E081XvGtmA+ETsM0ipwPDLOhe\n\
 xm2HOptY8p6yh9V4jGk5MU3BpJp0Jw47rqVTWgBLDtc=\n\
 -----END RSA PRIVATE KEY-----\n";
 
-constexpr auto invalidPrivKey = "-----BEGIN RSA PRIVATE KEY-----\n\
+const string invalidPrivKey = "-----BEGIN RSA PRIVATE KEY-----\n\
 MIICXAIBAAKBgQDXAW7AXMYXltS7VoF2QPomOPzr4S5gXVwQILwyEwo2BJkxBDHz\n\
 KYiYLUo9NLTPCSAP/5oGZk/vWz1+DxIoo0uHePEv7Zt7ffpeJD9F3rDHtrIbbMVh\n\
 Z70k5HSxDqEqNBYvvXGP0IK5yFtHcNxXnehyheu1QqkVL773Ma35w0wKTQIBAwKB\n\
@@ -371,7 +371,7 @@ TEST(RsaKey, InvalidPrivKey) {
 
 TEST(RsaEngine, EncryptDecryptCompare) {
     MockOpenSslWrapper ssl;
-    RsaEngine engine(ssl);    
+    RsaEngine engine(ssl);
     RsaKey key(ssl);
 
     const vector<unsigned char> in(cbegin(smallText), cend(smallText));
@@ -408,7 +408,7 @@ TEST(RsaEngine, EncryptDecryptCompare) {
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 }
 
-TEST(RsaEngine, EncryptLargeText) {
+TEST(RsaEngine, EncryptDecryptCompareLargeText) {
     MockOpenSslWrapper ssl;
     RsaEngine engine(ssl);
     RsaKey key(ssl);
@@ -450,6 +450,60 @@ TEST(RsaEngine, EncryptLargeText) {
               string(cbegin(largeText), cend(largeText)));
 }
 
-TEST(RsaEngine, EncryptSmallText) {
+TEST(RsaEngine, FromPublicKey) {
+    MockOpenSslWrapper ssl;
+    RsaEngine engine(ssl);
+    RsaKey key(ssl);
 
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPublicKey(NotNull(), 0, 0, 0)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+
+    ASSERT_FALSE(key.fromPublicKey(pubKey));
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, PEM_write_bio_RSAPublicKey(NotNull(), NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 247)).Times(1);
+    EXPECT_CALL(ssl, BIO_ctrl(NotNull(), 10, 0, NULL)).Times(1).WillOnce(Return(247));
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(1);
+
+    const auto k = key.pubAsString();
+    ASSERT_TRUE(k);
+
+    ASSERT_EQ(string(cbegin(pubKey), cend(pubKey)),
+              string(cbegin(*k), cend(*k)));
+}
+
+TEST(RsaEngine, FromPrivateKey) {
+    MockOpenSslWrapper ssl;
+    RsaEngine engine(ssl);
+    RsaKey key(ssl);
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+
+    ASSERT_FALSE(key.fromPrivateKey(privKey));
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, PEM_write_bio_RSAPrivateKey(NotNull(), NotNull(), NULL,
+                                                 NULL, 0, NULL, NULL))
+        .Times(1);
+    EXPECT_CALL(ssl, BIO_read(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, BIO_ctrl(NotNull(), 10, 0, NULL)).Times(1).WillOnce(Return(887));
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+    EXPECT_CALL(ssl, RSA_free(NotNull())).Times(1);
+
+    const auto k = key.privAsString();
+    ASSERT_TRUE(k);
+
+    ASSERT_EQ(string(cbegin(privKey), cend(privKey)),
+              string(cbegin(*k), cend(*k)));
 }
