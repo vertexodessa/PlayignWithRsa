@@ -41,6 +41,8 @@ class RsaKey {
     Result<RSA*> getKey() const;
 
     Result<std::pair<std::string, std::string>> asStrings() const;
+    Result<std::string> pubAsString() const;
+    Result<std::string> privAsString() const;
 
     std::optional<StackedError> fromPrivateKey(const std::string& privKey);
     std::optional<StackedError> fromPublicKey(const std::string& privKey);

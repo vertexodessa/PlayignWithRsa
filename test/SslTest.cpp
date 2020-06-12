@@ -347,13 +347,35 @@ TEST(RsaKey, CorrectKeySaveAndReadFromFile) {
     ASSERT_EQ(key, otherKey);
 }
 
-TEST(RsaEngine, Encrypt) {
+TEST(RsaKey, InvalidPrivKey) {
     MockOpenSslWrapper ssl;
-    RsaEngine engine(ssl);
+    RsaKey key2(ssl);
+
+    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
+    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
+    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
+    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
+    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
+
+    EXPECT_CALL(ssl, ERR_get_error()).Times(1);
+    EXPECT_CALL(ssl, ERR_error_string_n(_, _, 1024)).Times(1);
+
+    auto err = key2.fromPrivateKey(invalidPrivKey);
+    ASSERT_TRUE(err);
+
+    const char errStr[] =
+        "error:0D07207B:asn1 encoding routines:ASN1_get_object:header too long "
+        "- unable to parse rsa key";
+    ASSERT_NE(err->asText().find(errStr), string::npos);
+}
+
+TEST(RsaEngine, EncryptDecryptCompare) {
+    MockOpenSslWrapper ssl;
+    RsaEngine engine(ssl);    
+    RsaKey key(ssl);
 
     const vector<unsigned char> in(cbegin(smallText), cend(smallText));
 
-    RsaKey key(ssl);
     EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
     EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 247)).Times(1);
@@ -386,35 +408,12 @@ TEST(RsaEngine, Encrypt) {
     EXPECT_CALL(ssl, RSA_free(NotNull())).Times(2);
 }
 
-TEST(RsaEngine, InvalidPrivKey) {
-    MockOpenSslWrapper ssl;
-
-    RsaKey key2(ssl);
-    EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
-    EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
-    EXPECT_CALL(ssl, BIO_write(NotNull(), NotNull(), 887)).Times(1);
-    EXPECT_CALL(ssl, BIO_vfree(NotNull())).Times(1);
-    EXPECT_CALL(ssl, PEM_read_bio_RSAPrivateKey(NotNull(), 0, 0, 0)).Times(1);
-
-    EXPECT_CALL(ssl, ERR_get_error()).Times(1);
-    EXPECT_CALL(ssl, ERR_error_string_n(_, _, 1024)).Times(1);
-
-    auto err = key2.fromPrivateKey(invalidPrivKey);
-    ASSERT_TRUE(err);
-
-    const char errStr[] =
-        "error:0D07207B:asn1 encoding routines:ASN1_get_object:header too long "
-        "- unable to parse rsa key";
-    ASSERT_NE(err->asText().find(errStr), string::npos);
-}
-
 TEST(RsaEngine, EncryptLargeText) {
     MockOpenSslWrapper ssl;
     RsaEngine engine(ssl);
+    RsaKey key(ssl);
 
     const vector<unsigned char> in(cbegin(largeText), cend(largeText));
-
-    RsaKey key(ssl);
 
     EXPECT_CALL(ssl, BIO_s_mem()).Times(1);
     EXPECT_CALL(ssl, BIO_new(NotNull())).Times(1);
@@ -449,4 +448,8 @@ TEST(RsaEngine, EncryptLargeText) {
     ASSERT_TRUE(decrypted);
     ASSERT_EQ(string(cbegin(*decrypted), cend(*decrypted)),
               string(cbegin(largeText), cend(largeText)));
+}
+
+TEST(RsaEngine, EncryptSmallText) {
+
 }

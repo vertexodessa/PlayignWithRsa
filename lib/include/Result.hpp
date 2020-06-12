@@ -92,6 +92,7 @@ template <typename T> class Result {
     Result(StackedError errorCode);
 
     inline T& value();
+    const inline T& value() const;
     inline ErrorCode errorCode() const;
     inline StackedError error() const;
 
@@ -122,6 +123,8 @@ template <typename T> Result<T>::Result(T value) : m_result(value) {}
 template <typename T> Result<T>::Result(StackedError error) : m_result(error) {}
 
 template <typename T> T& Result<T>::value() { return std::get<T>(m_result); }
+
+template <typename T> const T& Result<T>::value() const { return std::get<T>(m_result); }
 
 template <typename T> ErrorCode Result<T>::errorCode() const {
     auto ret{ErrorCode::NoError};

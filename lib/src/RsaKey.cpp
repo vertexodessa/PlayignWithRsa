@@ -165,55 +165,84 @@ filesystem::path RsaKey::getAbsolutePath(const filesystem::path& relative) {
 }
 
 Result<std::pair<string, string>> RsaKey::asStrings() const {
-    Result<RSA*> keypair = getKey();
-    if (!keypair)
-        return ADD_ERROR(keypair.error(), ErrorCode::InvalidState,
-                         "unable to get valid key");
 
-    auto pri =
-        unique_ptr<BIO, Deleter<BIO>>(m_ssl.BIO_new(m_ssl.BIO_s_mem()),
-                                      [this](auto* p) { m_ssl.BIO_vfree(p); });
+    auto privKey = privAsString();
+    if(!privKey)
+        return ADD_ERROR(privKey.error(), ErrorCode::InvalidState, "unable to get private key");
+    auto pubKey = pubAsString();
+    if(!pubKey)
+        return ADD_ERROR(pubKey.error(), ErrorCode::InvalidState, "unable to get public key");
+
+    return Result(pair(privKey.value(), pubKey.value()));
+}
+
+Result<string> RsaKey::pubAsString() const {
+    Result<RSA*> key = getKey();
+    if (!key)
+        return ADD_ERROR(key.error(), ErrorCode::InvalidState,
+                         "unable to get valid key");
     auto pub =
         unique_ptr<BIO, Deleter<BIO>>(m_ssl.BIO_new(m_ssl.BIO_s_mem()),
                                       [this](auto* p) { m_ssl.BIO_vfree(p); });
 
-    if (!pri || !pub)
+    if (!pub)
         return MAKE_ERROR(ErrorCode::MemoryAllocationError,
-                          "unable to allocate memory for keys");
+                          "unable to allocate memory for key");
 
-    if (m_ssl.PEM_write_bio_RSAPrivateKey(pri.get(), keypair.value(), NULL,
-                                          NULL, 0, NULL, NULL) < 1) {
+    if (m_ssl.PEM_write_bio_RSAPublicKey(pub.get(), key.value()) < 1) {
         return MAKE_ERROR(ErrorCode::SSLBackendError, getLastSslError(m_ssl));
     }
-
-    if (m_ssl.PEM_write_bio_RSAPublicKey(pub.get(), keypair.value()) < 1) {
-        return MAKE_ERROR(ErrorCode::SSLBackendError, getLastSslError(m_ssl));
-    }
-
-    // BIO_pending(pri.get());
-    int pri_len = m_ssl.BIO_ctrl(pri.get(), BIO_CTRL_PENDING, 0, NULL);
 
     // BIO_pending(pub.get());
     int pub_len = m_ssl.BIO_ctrl(pub.get(), BIO_CTRL_PENDING, 0, NULL);
 
-    if (pri_len < 1 || pub_len < 1)
+    if (pub_len < 1)
         return MAKE_ERROR(ErrorCode::SSLBackendError,
                           "unable to read from bio");
 
-    string pri_key; // Private key
     string pub_key; // Public key
-    pri_key.resize(pri_len);
     pub_key.resize(pub_len);
-
-    if (m_ssl.BIO_read(pri.get(), pri_key.data(), pri_len) < 1)
-        return MAKE_ERROR(ErrorCode::SSLBackendError,
-                          "unable to read from bio");
 
     if (m_ssl.BIO_read(pub.get(), pub_key.data(), pub_len) < 1)
         return MAKE_ERROR(ErrorCode::SSLBackendError,
                           "unable to read from bio");
 
-    return Result(pair{pri_key, pub_key});
+    return Result(pub_key);
+}
+
+Result<string> RsaKey::privAsString() const {
+    Result<RSA*> key = getKey();
+    if (!key)
+        return ADD_ERROR(key.error(), ErrorCode::InvalidState,
+                         "unable to get valid key");
+    auto priv =
+        unique_ptr<BIO, Deleter<BIO>>(m_ssl.BIO_new(m_ssl.BIO_s_mem()),
+                                      [this](auto* p) { m_ssl.BIO_vfree(p); });
+
+    if (!priv)
+        return MAKE_ERROR(ErrorCode::MemoryAllocationError,
+                          "unable to allocate memory for key");
+
+    if (m_ssl.PEM_write_bio_RSAPrivateKey(priv.get(), key.value(), NULL, NULL,
+                                          0, NULL, NULL) < 1) {
+        return MAKE_ERROR(ErrorCode::SSLBackendError, getLastSslError(m_ssl));
+    }
+
+    // BIO_pending(priv.get());
+    int priv_len = m_ssl.BIO_ctrl(priv.get(), BIO_CTRL_PENDING, 0, NULL);
+
+    if (priv_len < 1)
+        return MAKE_ERROR(ErrorCode::SSLBackendError,
+                          "unable to read from bio");
+
+    string priv_key; // Public key
+    priv_key.resize(priv_len);
+
+    if (m_ssl.BIO_read(priv.get(), priv_key.data(), priv_len) < 1)
+        return MAKE_ERROR(ErrorCode::SSLBackendError,
+                          "unable to read from bio");
+
+    return Result(priv_key);
 }
 
 std::optional<StackedError> RsaKey::fromPrivateKey(const std::string& privKey) {
