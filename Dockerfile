@@ -17,10 +17,8 @@ RUN apt-get update && apt-get install -y \
   make \
   binutils-dev \
   libssl-dev \
-  git
-
-RUN apt-get install -y \
-  pkg-config libtbb-dev
+  git \
+  pkg-config
 
 RUN mkdir /build
 WORKDIR /build
