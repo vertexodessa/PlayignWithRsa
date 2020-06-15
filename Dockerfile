@@ -30,3 +30,9 @@ RUN ["./configure"]
 WORKDIR /build/build
 RUN ["make", "-j9"]
 RUN ["make", "test"]
+
+WORKDIR /build/build/app
+RUN ["./openssl_app", "--public-key", "pub.key", "--filename", "openssl_app", "--out-filename", "openssl_app.ssl"]
+RUN ["./openssl_app", "--private-key", "priv.key", "--filename", "openssl_app.ssl", "--out-filename", "openssl_app.enc"]
+
+RUN stringarray=$(md5sum openssl_app openssl_app.enc | tr '\n' ' '); A=$(echo ${stringarray} | cut -d ' ' -f1); B=$(echo ${stringarray} | cut -d ' ' -f3); test $A = $B
