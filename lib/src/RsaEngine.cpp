@@ -8,11 +8,9 @@
 #include <iostream>
 
 #include <functional>
+#include <future>
 
-#if (__has_include(<execution>))
-#include <execution>
 #define PARALLEL_WAY 1
-#endif
 
 using namespace std;
 
@@ -48,7 +46,7 @@ const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
     buffer.resize(bufSize, '\0');
     ret.reserve(bufSize * rsaSize);
 
-#if !defined(PARALLEL_WAY) || true
+#if !defined(PARALLEL_WAY)
 
     for (int i = 0; i < dataSize; i += iterSize) {
         auto len_ = min(iterSize, dataSize - i);
@@ -68,18 +66,18 @@ const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
 #else
     using Bunch = vector<unsigned char>;
     using Data = vector<Bunch>;
+    using ProcessedData = vector<future<Bunch>>;
     Data out;
     for (int i = 0; i < dataSize; i += iterSize) {
         auto len_ = min(iterSize, dataSize - i);
         out.push_back(Bunch{begin(data) + i, begin(data) + i + len_});
     }
 
-    Data dest;
+    ProcessedData dest;
     dest.resize(out.size());
 
-    transform(
-        execution::par, out.begin(), out.end(), back_inserter(dest),
-        [&keyPtr, padding, rsaSize, &func](const auto& bunch) {
+    for (int i=0; i < out.size(); ++i){
+        dest[i] = std::async(launch::async, [&keyPtr, padding, rsaSize, &func](const auto& bunch) {
             Bunch ret;
             auto len_ = bunch.size();
             vector<unsigned char> buffer;
@@ -96,13 +94,15 @@ const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
             ret.insert(begin(ret), buffer.data(),
                        buffer.data() + returned_length);
             return ret;
-        });
+        }, out[i]);
+    }
 
     for (auto& c : dest) {
-        if (c.empty())
+        auto val = c.get();
+        if (val.empty())
             return MAKE_ERROR(ErrorCode::EncryptionError,
                               "unable to encrypt data");
-        ret.insert(end(ret), begin(c), end(c));
+        ret.insert(end(ret), begin(val), end(val));
     }
 
     return Result(ret);
