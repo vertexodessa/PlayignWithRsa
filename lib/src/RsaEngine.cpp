@@ -48,7 +48,7 @@ const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
     buffer.resize(bufSize, '\0');
     ret.reserve(bufSize * rsaSize);
 
-#if !defined(PARALLEL_WAY)
+#if !defined(PARALLEL_WAY) || true
 
     for (int i = 0; i < dataSize; i += iterSize) {
         auto len_ = min(iterSize, dataSize - i);
@@ -78,7 +78,7 @@ const auto processData = [](const OpenSslWrapper& ssl, const RsaKey& key,
     dest.resize(out.size());
 
     transform(
-        execution_policy::par, out.begin(), out.end(), back_inserter(dest),
+        execution::par, out.begin(), out.end(), back_inserter(dest),
         [&keyPtr, padding, rsaSize, &func](const auto& bunch) {
             Bunch ret;
             auto len_ = bunch.size();
