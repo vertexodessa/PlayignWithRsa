@@ -17,23 +17,23 @@ enum class ErrorCode {
 };
 
 static inline std::string to_string(const ErrorCode& code) {
-#define F(x)                                                                   \
+#define CODE_TO_STRING(x)                                                      \
     case ErrorCode::x:                                                         \
         return std::string(#x);
 
     switch (code) {
-        F(NoError)
-        F(FileAccessError)
-        F(MemoryAllocationError)
-        F(InvalidState)
-        F(InvalidArguments)
-        F(InvalidInput)
-        F(SSLBackendError)
-        F(EncryptionError)
+        CODE_TO_STRING(NoError)
+        CODE_TO_STRING(FileAccessError)
+        CODE_TO_STRING(MemoryAllocationError)
+        CODE_TO_STRING(InvalidState)
+        CODE_TO_STRING(InvalidArguments)
+        CODE_TO_STRING(InvalidInput)
+        CODE_TO_STRING(SSLBackendError)
+        CODE_TO_STRING(EncryptionError)
     default:
         return {};
     }
-#undef F
+#undef CODE_TO_STRING
 }
 
 struct ErrDesc {
@@ -124,7 +124,9 @@ template <typename T> Result<T>::Result(StackedError error) : m_result(error) {}
 
 template <typename T> T& Result<T>::value() { return std::get<T>(m_result); }
 
-template <typename T> const T& Result<T>::value() const { return std::get<T>(m_result); }
+template <typename T> const T& Result<T>::value() const {
+    return std::get<T>(m_result);
+}
 
 template <typename T> ErrorCode Result<T>::errorCode() const {
     auto ret{ErrorCode::NoError};

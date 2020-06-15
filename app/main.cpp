@@ -14,6 +14,7 @@ int encrypt_file(const string& publicKeyPath, const string& filename,
     RsaKey pubKey(ssl);
     if (auto err = pubKey.readPublicKeyFromFile(publicKeyPath); !err) {
         cout << "ERROR: " << err->asText();
+        return -1;
     }
 
     RsaEngine eng(ssl);
@@ -52,6 +53,7 @@ int decrypt_file(const string& privateKeyPath, const string& filename,
     RsaKey privKey(ssl);
     if (auto err = privKey.readPrivateKeyFromFile(privateKeyPath); !err) {
         cout << "ERROR: " << err->asText();
+        return -1;
     }
 
     RsaEngine eng(ssl);
