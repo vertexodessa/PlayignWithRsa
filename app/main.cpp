@@ -12,8 +12,8 @@ int encrypt_file(const string& publicKeyPath, const string& filename,
                  const string& out_filename) {
     OpenSslWrapper ssl;
     RsaKey pubKey(ssl);
-    if (auto err = pubKey.readPublicKeyFromFile(publicKeyPath); !err) {
-        cout << "ERROR: " << err->asText();
+    if (auto err = pubKey.readPublicKeyFromFile(publicKeyPath); err) {
+        cout << "aa ERROR: " << err->asText() << "\n";
         return -1;
     }
 
@@ -51,8 +51,8 @@ int decrypt_file(const string& privateKeyPath, const string& filename,
                  const string& out_filename) {
     OpenSslWrapper ssl;
     RsaKey privKey(ssl);
-    if (auto err = privKey.readPrivateKeyFromFile(privateKeyPath); !err) {
-        cout << "ERROR: " << err->asText();
+    if (auto err = privKey.readPrivateKeyFromFile(privateKeyPath); err) {
+        cout << "ERROR: " << err->asText() << "\n";
         return -1;
     }
 
