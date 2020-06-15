@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: dockerbuild
+      run: (docker build -t my .; docker run my)
     - name: configure
       run: ./configure
     - name: make
